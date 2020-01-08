@@ -56,8 +56,8 @@ class MjcModule(object):
         self.m = self.model.body_mass[1]
         self.J = self.model.body_inertia[1][0]
         
-        glfw.set_window_pos(self.viewer.window,1300,100)
-        glfw.set_window_size(self.viewer.window,700,800)
+        # glfw.set_window_pos(self.viewer.window,1300,100)
+        # glfw.set_window_size(self.viewer.window,700,800)
     
     def vis_cur_pos(self, pos):
         for i in range(6):

@@ -6,7 +6,8 @@ import random
 import pickle
 from config import config
 import module.util as util
-from module.evaluation import plot_R3_space_pred, plot_R3_space_input, plot_near_CF_path_pred, plot_near_CF_path_fcl
+from module.evaluation import plot_R3_space_pred, plot_R3_space_input, \
+    plot_near_CF_path_pred, plot_near_CF_path_fcl
 from copy import deepcopy
 import DynamicsCpp
 from module.mjc_module import MjcModule
@@ -22,42 +23,42 @@ multiprocessing.set_start_method('spawn', True)
 from sklearn.utils import shuffle
 import module.MLP as MLP
 
-class ObjLoader(object):
-    def __init__(self, fileName):
-        self.vertices = []
-        self.faces = []
-        ##
-        try:
-            f = open(fileName)
-            for line in f:
-                if line[:2] == "v ":
-                    index1 = line.find(" ") + 1
-                    index2 = line.find(" ", index1 + 1)
-                    index3 = line.find(" ", index2 + 1)
+def ObjLoader(fileName):
+    self.vertices = []
+    self.faces = []
+    ##
+    try:
+        f = open(fileName)
+        for line in f:
+            if line[:2] == "v ":
+                index1 = line.find(" ") + 1
+                index2 = line.find(" ", index1 + 1)
+                index3 = line.find(" ", index2 + 1)
 
-                    vertex = (float(line[index1:index2]), float(line[index2:index3]), float(line[index3:-1]))
-                    self.vertices.append(vertex)
+                vertex = (float(line[index1:index2]), float(line[index2:index3]), \
+                    float(line[index3:-1]))
+                self.vertices.append(vertex)
 
-                elif line[0] == "f":
-                    string = line.replace("//", "/")
-                    ##
-                    i = string.find(" ") + 1
-                    face = []
-                    for item in range(string.count(" ")):
-                        if string.find(" ", i) == -1:
-                            face.append(int(string[i:-1].split("/")[0])-1)
-                            break
-                        face.append(int(string[i:string.find(" ", i)].split("/")[0])-1)
-                        i = string.find(" ", i) + 1
-                    ##
-                    self.faces.append(tuple(face))
+            elif line[0] == "f":
+                string = line.replace("//", "/")
+                ##
+                i = string.find(" ") + 1
+                face = []
+                for item in range(string.count(" ")):
+                    if string.find(" ", i) == -1:
+                        face.append(int(string[i:-1].split("/")[0])-1)
+                        break
+                    face.append(int(string[i:string.find(" ", i)].split("/")[0])-1)
+                    i = string.find(" ", i) + 1
+                ##
+                self.faces.append(tuple(face))
 
-            self.vertices = np.array(self.vertices).astype(float)
-            self.faces = np.array(self.faces).astype(int)
-            
-            f.close()
-        except IOError:
-            print(".obj file not found.")
+        self.vertices = np.array(self.vertices).astype(float)
+        self.faces = np.array(self.faces).astype(int)
+        
+        f.close()
+    except IOError:
+        print(".obj file not found.")
 
 
 class CollisionChecker(object):
@@ -100,7 +101,8 @@ class CollisionChecker(object):
         else :
             pen_depth = result.contacts[0].penetration_depth
             max_pene_depth = config["max_penetration_depth"] # 1.5 mm
-            return -0.4-np.clip(result.contacts[0].penetration_depth, 0, max_pene_depth)/max_pene_depth/2
+            return -0.4-np.clip(result.contacts[0].penetration_depth, 0, \
+                max_pene_depth)/max_pene_depth/2
     
     def collisioncheck_from_state(self, state):
         tran = state[:3]
@@ -122,7 +124,6 @@ class DataGeneration(object):
             tran2 = state[:3]
             
             self.LIOs["state"].append(state)
-            # self.LIOs["result"].append(int(self.collisioncheck(r2,tran2))+1.5)
             self.LIOs["result"].append(self.CD.collisioncheck(r2,tran2))
         return self.LIOs
         
@@ -163,10 +164,8 @@ def test_collision_validity(): # compared with nominal collision free trajectory
     resolution = 1000
     for i in range(resolution):
         tran, rot = util.collision_free_config_gen(-i/resolution*4*np.pi)
-        # tran[2] += 0.00016 #  # max boundary of contact
-        # tran[2] -= 0.000115 # min boundary of contact
-        # print("collision? : {}, state : {}, rot : \n{}".format(datagen.collisioncheck(rot,tran),tran, rot))
-        print("collision? : {}, state : {}".format(datagen.collisioncheck(rot,tran),tran))
+        print("collision? : {}, state : {}".format( \
+            datagen.collisioncheck(rot, tran), tran))
 
 def classes_count(LIO):
     output = np.array(LIO['output'])
@@ -176,7 +175,8 @@ def classes_count(LIO):
     num_total_data = len(LIO['output'])
     num_inside_data = np.shape(output[idx])[0]
     num_outsize_data1 = num_total_data - num_inside_data
-    print("bump 1 - total_data {} // inside data : {} // outside data : {}".format(num_total_data, num_inside_data, num_total_data - num_inside_data))
+    print("bump 1 - total_data {} // inside data : {} // outside data : {}".format( \
+        num_total_data, num_inside_data, num_total_data - num_inside_data))
     
     new_input = np.array(LIO['input'])[idx]
     
@@ -184,7 +184,8 @@ def classes_count(LIO):
     num_total_data = len(new_input)
     num_inside_data = np.shape(input_[deep_nut_idx])[0]
     num_outside_data = num_total_data - num_inside_data
-    print("bump 2 - total_data {} // inside data : {} // outside data : {}".format(num_total_data, num_inside_data, num_total_data - num_inside_data))
+    print("bump 2 - total_data {} // inside data : {} // outside data : {}".format( \
+        num_total_data, num_inside_data, num_total_data - num_inside_data))
     
     return new_input[deep_nut_idx]
 
@@ -198,7 +199,9 @@ def data_info_print(LIO):
     num_total_data = len(LIO['output'])
     num_inside_data = np.shape(output[idx])[0]
     num_outsize_data1 = num_total_data - num_inside_data
-    print("cur data - total_data {} // inside data : {} // outside data : {}".format(num_total_data, num_inside_data, num_total_data - num_inside_data))
+    print("cur data - total_data {} // inside data : {} // \
+        outside data : {}".format(num_total_data, num_inside_data, \
+            num_total_data - num_inside_data))
     
     new_input = np.array(LIO['input'])[idx]
     
@@ -206,7 +209,9 @@ def data_info_print(LIO):
     num_total_data = len(new_input)
     num_inside_data = np.shape(input_[deep_nut_idx])[0]
     num_outside_data = num_total_data - num_inside_data
-    print("valid data - total_data {} // inside data : {} // outside data : {}".format(num_total_data, num_inside_data, num_total_data - num_inside_data))
+    print("valid data - total_data {} // inside data : {} // outside data : \
+        {}".format(num_total_data, num_inside_data, num_total_data - \
+            num_inside_data))
 
 
 def data_balancing(LIO):
@@ -224,18 +229,23 @@ def data_balancing(LIO):
     num_inside_data = np.shape(output_inside)[0]
     num_outsize_data = np.shape(output_outside)[0]
     
-    print("before - total_data {} // inside data : {} // outside data : {}".format(num_total_data, num_inside_data, num_outsize_data))
+    print("before - total_data {} // inside data : {} // outside data : \
+        {}".format(num_total_data, num_inside_data, num_outsize_data))
     
     if (num_outsize_data > num_inside_data*1.1):
         input_outside, output_outside = shuffle(input_outside, output_outside)
-        input_outside, output_outside = input_outside[:num_inside_data], output_outside[:num_inside_data]
+        input_outside, output_outside = input_outside[:num_inside_data], \
+            output_outside[:num_inside_data]
     
     LIO['output'] = list(output_inside) + list(output_outside)
     LIO['input'] =  list(input_inside) + list(input_outside)
     
-    print("after - total_data {} // inside data : {} // outside data : {}".format(len(LIO['output']), len(list(output_inside)), len(list(output_outside))))
+    print("after - total_data {} // inside data : {} // outside data : {} \
+        ".format(len(LIO['output']), len(list(output_inside)), \
+            len(list(output_outside))))
     
-    LIO['output'], LIO['input'] = shuffle(np.array(LIO['output']), np.array(LIO['input']))
+    LIO['output'], LIO['input'] = shuffle(np.array(LIO['output']), \
+        np.array(LIO['input']))
     
     return LIO
 
@@ -248,7 +258,8 @@ def artificial_nominal_data():
     print(start_i)
     states = []
     for i in range(start_i,resolution):
-        states.append(util.collision_free_config_gen(-i/resolution*total_angle, output_type=1))
+        states.append(util.collision_free_config_gen(-i/resolution*total_angle, \
+            output_type=1))
     
     states += (list(np.array(states) + np.array([0,0,0.0001,0,0,0]))+
         list(np.array(states) + np.array([0,0,-0.0001,0,0,0]))+
@@ -267,13 +278,15 @@ def data_rejection(LIO, mlp):
     rej_criteria = np.random.rand(input_pnts.shape[0])
     # prob_dis = 1.0+pred*2
     prob_dis = 0.5 + label_pred + 0.004
-    outside_important_pnts_idx = np.where( (prob_dis>=rej_criteria) * (labels < 0)  )
+    outside_important_pnts_idx = np.where((prob_dis >= rej_criteria) * (labels < 0))
     
     prob_dis = 0.5 - label_pred + 0.004
     inside_important_pnts_idx =  np.where( (prob_dis>=rej_criteria) * (labels == 0.5)  )
     
-    new_input = list(input_pnts[outside_important_pnts_idx]) + list(input_pnts[inside_important_pnts_idx])
-    new_output = list(labels[outside_important_pnts_idx]) + list(labels[inside_important_pnts_idx])
+    new_input = list(input_pnts[outside_important_pnts_idx]) + list( \
+        input_pnts[inside_important_pnts_idx])
+    new_output = list(labels[outside_important_pnts_idx]) + list( \
+        labels[inside_important_pnts_idx])
 
     LIO["input"] = new_input
     LIO["output"] = new_output
@@ -286,7 +299,8 @@ def test_run(dyn, mjc, vis = True, contact = False):
     pos_stack_tmp = []
     for i in range(2500):
         u = tree.tree_follower(state)
-        u += 0.001*40/(config["substep"] * config["dt"])  * np.random.normal(0,1,[6]) * np.array([1,1,1,0.5,0.5,0.5])
+        u += 0.001*40/(config["substep"] * config["dt"])  * np.random.normal( \
+            0,1,[6]) * np.array([1,1,1,0.5,0.5,0.5])
         for i in range(config["substep"]):
             if contact:
                 state = dyn.fwd_dynamics(state, u)
@@ -308,7 +322,8 @@ def data_gen_from_simulation(idx):
     pos_stack_tmp = []
     for i in range(2500):
         u = tree.tree_follower(state)
-        u += 0.001*33/(config["substep"] * config["dt"])  * np.random.normal(0,1,[6]) * np.array([1,1,1,0.5,0.5,0.5])
+        u += 0.001*33/(config["substep"] * config["dt"])  * np.random.normal(0, \
+            1, [6]) * np.array([1, 1, 1, 0.5, 0.5, 0.5])
         for i in range(config["substep"]):
             state = dyn_in.fwd_dynamics_wo_contact(state, u)
         pos_stack_tmp.append(state[:6])
@@ -332,14 +347,16 @@ def concentration(input, mlp):
 
 def labeling(inputs):
     CD = CollisionChecker()
-    return [[input, CD.collisioncheck_from_state(np.array(input))] for input in inputs]
+    return [[input, CD.collisioncheck_from_state(np.array(input))] for \
+        input in inputs]
 
 if __name__ == "__main__":
     # initialization
     mjc = MjcModule('xmls/bolt_nut.xml',config)
     mlp = MLP.MLP(config, hdim=64)
     dyn = DynamicsCpp.Dynamics()
-    dyn.change_param(config["dt"], config["threshold"], config["damping_coeff"], config["stabilization_coeff"])
+    dyn.change_param(config["dt"], config["threshold"], config["damping_coeff"], \
+        config["stabilization_coeff"])
     tree = Tree("graph_data/graph_GraphML.xml", config)
     
     # learning continue! for load weight
@@ -420,7 +437,8 @@ if __name__ == "__main__":
         print("step 6 - start training")
         data_info_print(LIO)
         normalized_input = mlp.input_normalize(LIO["input"])
-        normalized_input, LIO["input"], LIO["output"] = shuffle(normalized_input, LIO["input"], LIO["output"])
+        normalized_input, LIO["input"], LIO["output"] = shuffle(normalized_input, \
+            LIO["input"], LIO["output"])
         if len(np.shape(LIO["output"])) < 2:
             LIO["output"] = np.expand_dims(LIO["output"],axis=1)
         mlp.fit(normalized_input,LIO["output"])
