@@ -1,0 +1,82 @@
+<mujoco model="bolt_nut">
+
+    <compiler inertiafromgeom="true" angle="radian" coordinate="local" />
+    <option timestep="0.001" gravity="0 0 0" iterations="1" integrator="Euler" />
+    <default>
+        <joint limited="false" damping="1" />
+        <geom contype="2" conaffinity="1" condim="1" friction="100.0 .1 .1" density="1000" margin="0.002" />
+    </default>
+    <asset>
+        <mesh name="nut" file="mesh/nut.STL" />
+        <mesh name="bolt" file="mesh/bolt.STL" />
+        <mesh name="cone" file="mesh/cone.STL" scale = "0.003 0.003 0.003" />
+    </asset>
+
+    <worldbody>     
+    <body name="nut" pos="0 0 0">
+            <!-- <inertial mass="12.0" diaginertia="0.8 0.8 0.8" pos="0 0 0" /> -->
+            <geom name="nut_geom" type="mesh" mesh="nut" contype="2" rgba="0.5 0.5 0.5 0.5" />
+            <joint name="ball_x" type="slide" pos="0 0 0" axis="1 0 0" />
+            <joint name="ball_y" type="slide" pos="0 0 0" axis="0 1 0" />
+            <joint name="ball_z" type="slide" pos="0 0 0" axis="0 0 1" />
+            <joint name="ball_ex" type="hinge" pos="0 0 0" axis="1 0 0" />
+            <joint name="ball_ey" type="hinge" pos="0 0 0" axis="0 1 0" />
+            <joint name="ball_ez" type="hinge" pos="0 0 0" axis="0 0 1" />
+        </body>
+    <body name="bolt" pos="0 0 0">
+            <geom name="bolt_geom" type="mesh" mesh="bolt" rgba="0.5 0.5 0.5 1"/>
+            <!-- <camera name="camera2" mode="track" pos="0.1 0 0.04" xyaxes="0 1 0 0 0 1"/> -->
+            <!-- <camera name="camera3" mode="track" pos="0.1 0 0.04" xyaxes="0 1 0 -0.1 0 1"/> -->
+            <camera name="camera5" mode="track" pos="0.10 0 0.075" xyaxes="0 1 0 -0.4 0 1"/>
+            <!-- rgba=".55 .227 .38 1" -->
+        </body>
+
+    <body name="bolt_origin" pos="0 0 0">
+            <geom name="bolt_origin_geom" type="mesh" mesh="bolt" rgba="0.5 0.5 0.5 0.3"/>
+        </body>
+
+    <body name="arrow1_start" pos="0 0 0">
+            <!-- <geom name="arrow_start" type="sphere" size = "0.003" rgba=".95 .3 .3 1" /> -->
+            <site name="s1" pos="0 0 0" rgba=".9 .9 .9 0" size ="0.0001" />
+        </body>
+
+    <body name="arrow1_end" pos="0 0 0">
+            <geom name="cone_geon" type="mesh" mesh="cone" rgba=".95 .3 .384 1" />
+            <site name="s2" pos="0 0 0" rgba=".9 .9 .9 0" size ="0.0001" />
+        </body>
+
+    <body name="arrow2_start" pos="0 0 0">
+            <site name="s3" pos="0 0 0" rgba=".9 .9 .9 0" size ="0.0001" />
+        </body>
+
+    <body name="arrow2_end" pos="0 0 0">
+            <geom name="cone_geom_arrow2" type="mesh" mesh="cone" rgba="0 .313 .478 1" />
+            <site name="s4" pos="0 0 0" rgba=".9 .9 .9 0" size ="0.0001" />
+        </body>
+
+    </worldbody>
+
+
+
+    <tendon>
+        <spatial width="0.001" rgba=".95 .3 .384 1">
+            <site site="s1"/>
+            <site site="s2"/>
+        </spatial>
+        <spatial width="0.001" rgba="0 .313 .478 1">
+            <site site="s3"/>
+            <site site="s4"/>
+        </spatial>
+    </tendon>
+
+
+    <actuator>
+        <motor joint="ball_x" />
+        <motor joint="ball_y" />
+        <motor joint="ball_z" />
+        <motor joint="ball_ex" />
+        <motor joint="ball_ey" />
+        <motor joint="ball_ez" />
+    </actuator>
+
+</mujoco>
