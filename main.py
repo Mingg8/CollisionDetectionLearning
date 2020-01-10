@@ -29,6 +29,7 @@ class ObjLoader():
     def __init__(self):
         self.vertices = []
         self.faces = []
+        self.normals = []
     
     def setObj(self, fileName):
         try:
@@ -42,6 +43,15 @@ class ObjLoader():
                     vertex = [float(line[index1:index2]), float(line[index2:index3]), \
                         float(line[index3:-1])]
                     self.vertices.append(vertex)
+
+                elif line[:2] == "vn":
+                    index1 = line.find(" ") + 1
+                    index2 = line.find(" ", index1 + 1)
+                    index3 = line.find(" ", index2 + 1)
+
+                    normal = [float(line[index1:index2]), float(line[index2:index3]), \
+                        float(line[index3:-1])]
+                    self.normals.append(normal)
 
                 elif line[0] == "f":
                     string = line.replace("//", "/")
@@ -58,6 +68,7 @@ class ObjLoader():
                     self.faces.append(face)
 
             self.vertices = np.array(self.vertices).astype(float)
+            self.normals = np.array(self.normals).astype(float)
             self.faces = np.array(self.faces).astype(int)
             
             f.close()
@@ -92,20 +103,43 @@ class CollisionChecker():
         ret = fcl.collide(self.obj1, self.obj2, request, result)
         
         if result.contacts == []:
-            return int(~(result.is_collision)) + 1.5
+            # return int(~(result.is_collision)) + 1.5
+            return (-1, -1)
         else :
-            result.contacts[0].
             pen_depth = result.contacts[0].penetration_depth
             max_pene_depth = config["max_penetration_depth"] # 1.5 mm
-            return -0.4-np.clip(result.contacts[0].penetration_depth, 0, \
-                max_pene_depth)/max_pene_depth/2
-    
-    def collisioncheck_from_state(self, state):
-        tran = state[:3]
-        rot = util.XYZEuler2R(state[3],state[4],state[5])
-        return self.collisioncheck(rot,tran)
+            return (result.contacts[0].b1, result.contacts[0].b2)
 
-def data_generation(padding, noise_size):
+def rayIntersectsTriangle(ray_origin, ray_vec, tri):
+    EPS = 0.0000001
+    tri = np.array(tri).astype(float)
+    e1 = tri[1] - tri[0]
+    e2 = tri[2] - tri[0]
+    h = np.cross(ray_vec, e2)
+    a = np.dot(e1, h)
+    if (a > -EPS and a < EPS):
+        # print("1")
+        return 0
+    f = 1.0 / a
+    s = ray_origin - tri[0]
+    u = f * np.dot(s, h)
+    if (u < 0.0 or u > 1.0):
+        # print("2")
+        return 0
+    q = np.cross(s, e1)
+    v = f * np.dot(ray_vec, q)
+    if (v < 0.0 or u+v>1.0):
+        # print("3")
+        return 0
+    t = f * np.dot(e2, q)
+    if (t > EPS and t < (1-EPS)):
+        return 1
+    else:
+        # print("4")
+        return 0
+
+
+def dataGeneration(padding, noise_size):
     obj_mesh = ObjLoader()
     obj_mesh.setObj("obj/nut.obj")
     # mesh order: 0.001
@@ -117,14 +151,13 @@ def data_generation(padding, noise_size):
                 [0, sqrt(3)/3 * padding, -sqrt(6)/12 * padding]]
 
     tetra = ObjLoader()
-    tetra.faces = [[1, 2, 3], [1, 3, 4], [1, 2, 4], [2, 3, 4]]
+    tetra.faces = [[0, 1, 2], [0, 2, 3], [0, 1, 3], [1, 2, 3]]
     tetra.faces = np.array(tetra.faces).astype(int)
 
     input_ = []
     output = []
     
-    # for i in range(shape[0]):
-    for i in range(10):
+    for i in range(shape[0]):
         tetra.vertices = []
         noise = np.random.rand(3)
 
@@ -144,7 +177,29 @@ def data_generation(padding, noise_size):
         
         tetra.vertices = np.array(tetra.vertices).astype(float)
         col = CollisionChecker(tetra, obj_mesh)
-        output.append(col.collisioncheck())
+
+        res = col.collisioncheck()
+        
+        if res[0] == -1:
+            # check if point is inside the mesh
+            # rayIntersectsTriangle(np.array(b))
+            continue
+        else:
+            # tetra contact point
+            tetra_contact_pnt = np.array([0, 0, 0]).astype(float)
+            for i in tetra.faces[res[0]]:
+                tetra_contact_pnt += tetra.vertices[i]
+            tetra_contact_pnt /= 3
+            print(tetra_contact_pnt)
+
+            # obj contact point
+            obj_contact_pnt = np.array([0, 0, 0]).astype(float)
+            for i in obj_mesh.faces[res[1]]:
+                obj_contact_pnt += obj_mesh.vertices[i]
+            obj_contact_pnt /= 3
+            print(obj_contact_pnt)
+
+        # output.append(col.collisioncheck())
     print(output)
     
     # for i in range(0, shape[0], 2):
@@ -264,8 +319,47 @@ def labeling(inputs):
     return [[input, CD.collisioncheck_from_state(np.array(input))] for \
         input in inputs]
 
+def checkCollisionDetection():
+    padding = 1
+    tetra_vertices = [[0, 0, sqrt(6)/4*padding], \
+        [-padding/2, -sqrt(3)/6*padding, -sqrt(6)/12 * padding], \
+            [padding/2, -sqrt(3)/6 * padding, -sqrt(6)/12 * padding], \
+                [0, sqrt(3)/3 * padding, -sqrt(6)/12 * padding]]
+
+    tetra = ObjLoader()
+    tetra.faces = [[0, 1, 2], [0, 2, 3], [0, 1, 3], [1, 2, 3]]
+    tetra.faces = np.array(tetra.faces).astype(int)
+    tetra.vertices = np.array(tetra_vertices).astype(float)
+
+    offset = np.array([0.0, 0.1, 0.1])
+
+    padding = 0.1
+    tetra_vertices = [[0, 0, sqrt(6)/4*padding], \
+        [-padding/2, -sqrt(3)/6*padding, -sqrt(6)/12 * padding], \
+            [padding/2, -sqrt(3)/6 * padding, -sqrt(6)/12 * padding], \
+                [0, sqrt(3)/3 * padding, -sqrt(6)/12 * padding]]
+
+    tetra_small = ObjLoader()
+    tetra_small.faces = [[0, 1, 2], [0, 2, 3], [0, 1, 3], [1, 2, 3]]
+    tetra_small.faces = np.array(tetra.faces).astype(int)
+    tetra_small.vertices = np.array(tetra_vertices).astype(float)
+    for i in range(len(tetra_small.vertices)):
+        tetra_small.vertices[i] += offset
+
+    col = CollisionChecker(tetra, tetra_small)
+    res = col.collisioncheck()
+    print(res)
+
+    for i in range(len(tetra.faces)):
+        a = [tetra.vertices[j] for j in tetra.faces[i]]
+        isInInside = rayIntersectsTriangle(offset, np.array([0, 0, 1]),\
+            a)
+        print(isInInside)
+
 if __name__ == "__main__":
-    data_generation(0.001, 0.0005) # padding, noise_size
+    # data_generation(0.01, 0.01) # padding, noise_size
+    checkCollisionDetection()
+
     # mlp = MLP.MLP(config, hdim=64)
     # tree = Tree("graph_data/graph_GraphML.xml", config)
     
