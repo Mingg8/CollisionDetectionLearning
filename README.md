@@ -11,5 +11,5 @@ conda activate NutLearning
 ```
 
 ## execution
-``` python fcl_learning_by_demonstration.py ```
+``` python main.py ```
 

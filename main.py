@@ -184,8 +184,8 @@ def dataGeneration(padding, noise_size):
         else:
             # tetra contact point
             tetra_contact_pnt = np.array([0, 0, 0]).astype(float)
-            for i in tetra.faces[res[0]]:
-                tetra_contact_pnt += tetra.vertices[i]
+            for l in tetra.faces[res[0]]:
+                tetra_contact_pnt += tetra.vertices[l]
             tetra_contact_pnt /= 3
 
             # obj contact point
@@ -358,91 +358,93 @@ def checkCollisionDetection():
         print(isInInside)
 
 if __name__ == "__main__":
-    dataGeneration(0.01, 0.001) # padding, noise_size
+    dataGeneration(0.01, 0.01) # padding, noise_size
+    # 0.01, 0.001
+    dataGeneration(0.001, 0.001)
 
     mlp = MLP.MLP(config, hdim=64)
-    # tree = Tree("graph_data/graph_GraphML.xml", config)
+    tree = Tree("graph_data/graph_GraphML.xml", config)
     
-    # # learning continue! for load weight
-    # mlp.load_model('model_save/model0.h5')
+    # learning continue! for load weight
+    mlp.load_model('model_save/model0.h5')
     
-    # bound = config["bound"]
-    # LIO = {}
-    # LIO["state"] = []    
-    # LIO["input"] = []
-    # LIO["output"] = []
+    bound = config["bound"]
+    LIO = {}
+    LIO["state"] = []    
+    LIO["input"] = []
+    LIO["output"] = []
     
-    # for itr in range(100):
-    #     print("===== iteration {} start".format(itr))
-    #     ## step 1 - exploration and data generation from demonstration
-    #     print("step 1 - data generation by tree-follower")
-    #     # data from prior iteration
-    #     LIO["input"] = list(LIO["input"])
-    #     LIO["output"] = list(LIO["output"])
+    for itr in range(100):
+        print("===== iteration {} start".format(itr))
+        ## step 1 - exploration and data generation from demonstration
+        print("step 1 - data generation by tree-follower")
+        # data from prior iteration
+        LIO["input"] = list(LIO["input"])
+        LIO["output"] = list(LIO["output"])
 
-    #     # TODO: change new_input
-    #     new_input = []
-    #     with Pool(45) as p:
-    #         # generated_pos_data = p.map(data_gen_from_simulation, range(200))
-    #         generated_pos_Data = p.map(data_gen, range(200))
+        # TODO: change new_input
+        new_input = []
+        with Pool(45) as p:
+            # generated_pos_data = p.map(data_gen_from_simulation, range(200))
+            generated_pos_Data = p.map(data_gen, range(200))
             
-    #     for i in range(len(generated_pos_data)):
-    #         new_input += list(generated_pos_data[i])
+        for i in range(len(generated_pos_data)):
+            new_input += list(generated_pos_data[i])
             
-    #     print("generated data : {}".format(len(new_input)))    
+        print("generated data : {}".format(len(new_input)))    
         
-    #     ## step 2 - generate scattered data
-    #     print("step 2 - generate scattered data start")
-    #     scattered_data = []
-    #     for i in range(len(list(new_input))):
-    #         noise_weight = np.array([0.0003, 0.0003, 0.0002, 0.005, 0.005, 0.01])
-    #         noise = np.random.normal(0, 1, [100,6]) * noise_weight
-    #         noise = np.vstack((noise , np.zeros([1,6]))) # for original data
-    #         scattered_data += list(noise + new_input[i])
-    #     new_input += list(scattered_data)
-    #     ## uniform state generation
-    #     new_input += list(util.random_state_generation(3000000))       
+        ## step 2 - generate scattered data
+        print("step 2 - generate scattered data start")
+        scattered_data = []
+        for i in range(len(list(new_input))):
+            noise_weight = np.array([0.0003, 0.0003, 0.0002, 0.005, 0.005, 0.01])
+            noise = np.random.normal(0, 1, [100,6]) * noise_weight
+            noise = np.vstack((noise , np.zeros([1,6]))) # for original data
+            scattered_data += list(noise + new_input[i])
+        new_input += list(scattered_data)
+        ## uniform state generation
+        new_input += list(util.random_state_generation(3000000))       
         
-    #     ## step 4 - labeling
-    #     print("step 4 - labeling start")
-    #     distributed_input = []
-    #     for i in range(int(len(new_input)/200)):
-    #         distributed_input.append(new_input[200*i:200*(i+1)])
-    #     with Pool(45) as p:
-    #         labeled_input_output = p.map(labeling, list(distributed_input))
+        ## step 4 - labeling
+        print("step 4 - labeling start")
+        distributed_input = []
+        for i in range(int(len(new_input)/200)):
+            distributed_input.append(new_input[200*i:200*(i+1)])
+        with Pool(45) as p:
+            labeled_input_output = p.map(labeling, list(distributed_input))
         
-    #     flatten_labeled_input_output = []
-    #     for i in range(len(labeled_input_output)):
-    #         flatten_labeled_input_output += labeled_input_output[i]
-    #     LIO["input"] = list(LIO["input"])
-    #     LIO["output"] = list(LIO["output"])
-    #     LIO["input"] += [pair[0] for pair in flatten_labeled_input_output]
-    #     LIO["output"] += [pair[1] for pair in flatten_labeled_input_output]
+        flatten_labeled_input_output = []
+        for i in range(len(labeled_input_output)):
+            flatten_labeled_input_output += labeled_input_output[i]
+        LIO["input"] = list(LIO["input"])
+        LIO["output"] = list(LIO["output"])
+        LIO["input"] += [pair[0] for pair in flatten_labeled_input_output]
+        LIO["output"] += [pair[1] for pair in flatten_labeled_input_output]
         
-    #     print("step 4 end")        
+        print("step 4 end")        
         
-    #     ## step 5 - state balancing and slicing
-    #     print("step 5 -data balancing")
-    #     LIO = data_balancing(LIO)
-    #     if len(list(LIO["input"])) > 600000:
-    #         LIO["input"] = LIO["input"][:600000]
-    #         LIO["output"] = LIO["output"][:600000]
+        ## step 5 - state balancing and slicing
+        print("step 5 -data balancing")
+        LIO = data_balancing(LIO)
+        if len(list(LIO["input"])) > 600000:
+            LIO["input"] = LIO["input"][:600000]
+            LIO["output"] = LIO["output"][:600000]
         
-    #     ## step 6 - training
-    #     print("step 6 - start training")
-    #     data_info_print(LIO)
-    #     normalized_input = mlp.input_normalize(LIO["input"])
-    #     normalized_input, LIO["input"], LIO["output"] = shuffle(normalized_input, \
-    #         LIO["input"], LIO["output"])
-    #     if len(np.shape(LIO["output"])) < 2:
-    #         LIO["output"] = np.expand_dims(LIO["output"],axis=1)
-    #     mlp.fit(normalized_input,LIO["output"])
-    #     # save
-    #     mlp.model.save_weights("./model_save/model" + str(itr) +".h5")
-    #     print("Saved model to disk")
+        ## step 6 - training
+        print("step 6 - start training")
+        data_info_print(LIO)
+        normalized_input = mlp.input_normalize(LIO["input"])
+        normalized_input, LIO["input"], LIO["output"] = shuffle(normalized_input, \
+            LIO["input"], LIO["output"])
+        if len(np.shape(LIO["output"])) < 2:
+            LIO["output"] = np.expand_dims(LIO["output"],axis=1)
+        mlp.fit(normalized_input,LIO["output"])
+        # save
+        mlp.model.save_weights("./model_save/model" + str(itr) +".h5")
+        print("Saved model to disk")
     
-    #     ## step 7 - NN evaluation from simulation
-    #     print("step 7 - test run start")
-    #     # mlp.load_weights_to_dyn(dyn) # weight update
-    #     # test_run(dyn, mjc, vis = True, contact = True)
+        ## step 7 - NN evaluation from simulation
+        print("step 7 - test run start")
+        # mlp.load_weights_to_dyn(dyn) # weight update
+        # test_run(dyn, mjc, vis = True, contact = True)
         
