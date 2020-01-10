@@ -118,24 +118,21 @@ def rayIntersectsTriangle(ray_origin, ray_vec, tri):
     h = np.cross(ray_vec, e2)
     a = np.dot(e1, h)
     if (a > -EPS and a < EPS):
-        # print("1")
         return 0
     f = 1.0 / a
     s = ray_origin - tri[0]
     u = f * np.dot(s, h)
     if (u < 0.0 or u > 1.0):
-        # print("2")
         return 0
     q = np.cross(s, e1)
     v = f * np.dot(ray_vec, q)
     if (v < 0.0 or u+v>1.0):
-        # print("3")
         return 0
     t = f * np.dot(e2, q)
     if (t > EPS and t < (1-EPS)):
-        return 1
+        pnt = ray_origin + ray_vec * t
+        return pnt
     else:
-        # print("4")
         return 0
 
 
@@ -157,55 +154,59 @@ def dataGeneration(padding, noise_size):
     input_ = []
     output = []
     
-    for i in range(shape[0]):
+    # for i in range(shape[0]):
+    for i in range(1000):
         tetra.vertices = []
         noise = np.random.rand(3)
 
         # make input
-        b = []
-        for k in range(3):
-            b.append(obj_mesh.vertices[i][k] + noise[k] * noise_size)
-        input_.append(b)
+        tetra_origin = obj_mesh.vertices[i] + noise * noise_size
+        input_.append(tetra_origin)
 
         # make output
         for j in range(4):
-            a = []
-            for k in range(3):
-                a.append(tetra_vertices[j][k] + \
-                    obj_mesh.vertices[i][k] + noise[k] * noise_size)
-            tetra.vertices.append(a)
-        
+            tetra.vertices.append(tetra_vertices[j] + tetra_origin)
         tetra.vertices = np.array(tetra.vertices).astype(float)
         col = CollisionChecker(tetra, obj_mesh)
-
         res = col.collisioncheck()
-        
         if res[0] == -1:
             # check if point is inside the mesh
-            # rayIntersectsTriangle(np.array(b))
-            continue
+            for l in range(len(obj_mesh.faces)):
+                a = [obj_mesh.vertices[ll] for ll in obj_mesh.faces[l]]
+                isInInside = rayIntersectsTriangle(np.array(tetra_origin),  \
+                    np.array([0, 0, 1]), a)
+                if (isInInside is not 0):
+                    # point is in inside!!
+                    penet = -np.linalg.norm(isInInside - tetra_origin)
+                    break
+            # point is not colliding
+            penet = 1
         else:
             # tetra contact point
             tetra_contact_pnt = np.array([0, 0, 0]).astype(float)
             for i in tetra.faces[res[0]]:
                 tetra_contact_pnt += tetra.vertices[i]
             tetra_contact_pnt /= 3
-            print(tetra_contact_pnt)
 
             # obj contact point
             obj_contact_pnt = np.array([0, 0, 0]).astype(float)
-            for i in obj_mesh.faces[res[1]]:
-                obj_contact_pnt += obj_mesh.vertices[i]
+            for l in obj_mesh.faces[res[1]]:
+                obj_contact_pnt += obj_mesh.vertices[l]
             obj_contact_pnt /= 3
-            print(obj_contact_pnt)
 
-        # output.append(col.collisioncheck())
+            # normal
+            obj_mesh_normal = np.array([0, 0, 0]).astype(float)
+            for l in obj_mesh.faces[res[1]]:
+                obj_mesh_normal += obj_mesh.normals[l]
+            obj_mesh_normal /= np.linalg.norm(obj_mesh_normal)
+
+            penet = np.dot(obj_mesh_normal, \
+                tetra_contact_pnt - obj_contact_pnt)
+        # print(penet)
+        output.append(penet)
+        if (i%10 == 0):
+            print(i)
     print(output)
-    
-    # for i in range(0, shape[0], 2):
-    #     input_.append(obj_mesh.vertices[i])
-    #     output.append(0)
-    print(len(output))
 
 def data_info_print(LIO):
     output = np.array(LIO['output'])
@@ -357,10 +358,9 @@ def checkCollisionDetection():
         print(isInInside)
 
 if __name__ == "__main__":
-    # data_generation(0.01, 0.01) # padding, noise_size
-    checkCollisionDetection()
+    dataGeneration(0.01, 0.001) # padding, noise_size
 
-    # mlp = MLP.MLP(config, hdim=64)
+    mlp = MLP.MLP(config, hdim=64)
     # tree = Tree("graph_data/graph_GraphML.xml", config)
     
     # # learning continue! for load weight
