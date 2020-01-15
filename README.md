@@ -12,6 +12,7 @@ conda install scikit-learn
 conda install theano
 conda install -c conda-forge tensorflow
 pip install keras
+pip3 install h5py
 ```
 
 ## execution
