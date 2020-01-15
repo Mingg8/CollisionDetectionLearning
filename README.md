@@ -8,6 +8,10 @@ conda env create -f meta.yaml
 conda init zsh
 source ~/.zshrc
 conda activate NutLearning
+conda install scikit-learn
+conda install theano
+conda install -c conda-forge tensorflow
+pip install keras
 ```
 
 ## execution
