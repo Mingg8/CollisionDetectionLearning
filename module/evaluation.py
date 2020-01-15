@@ -5,7 +5,6 @@ import os, sys
 sys.path.insert(0, os.path.abspath("/home/dongwon/research/configuration_learning_nut"))
 import numpy as np
 from numpy import linalg as LA
-import module.MLP as MLP
 import pickle
 from sklearn.utils import shuffle
 from sklearn.preprocessing import normalize

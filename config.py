@@ -6,8 +6,7 @@ config["w_init"] = np.array([1, 3.0e-4, 1])
 config["bound"] = {}
 config["bound"]["min"] = np.array([-0.030, -0.030,  0.020, -1.00, -1.00, -11.00])
 config["bound"]["max"] = np.array([0.030,  0.030,  0.070,  1.00,  1.00,  1.0])
-# config["bound"]["min"] = np.array([-0.150, -0.150,  -0.150, -2.50, -2.50, -11.00])
-# config["bound"]["max"] = np.array([0.150,  0.150,  0.150,  2.50,  2.50,  2.5])
+
 config["m"] = 12
 config["J"] = 0.8
 # config["dt"] = 0.0005
