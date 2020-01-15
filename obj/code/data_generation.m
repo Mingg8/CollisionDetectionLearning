@@ -43,27 +43,38 @@ for j = 1:size(obj_f_vn,1)
     
 end
 
+index = [];
+for i = 1:size(obj_f_v,1)
+    position = [0, 0, 0];
+    for j = 1:3
+        position = position + obj_v(obj_f_v(i, j), :);
+    end
+    position = position / 3;
+    if position(3) < 0.039 && position(3) > 0.021 && (obj_f_vn(i,3) > 0.999 || obj_f_vn(i,3) < -0.999)
+        index = [index;i];
+    end
+end
+for i = 1:numel(index)
+    position = [0, 0, 0];
+    for j = 1:3
+        position = position + obj_v(obj_f_v(index(i), j), :);
+    end
+    position = position / 3;
+    obj_f_vn(index(i),:) = [position(1);position(2);0];
+    obj_f_vn(index(i),:) = obj_f_vn(index(i),:)/norm(obj_f_vn(index(i),:));
+end
+
+
 %% parameter
 noise_size = 0.001;
 noise_size2 = 0.005;
 eps = 1e-10;
-data_num = 50000;
+data_num = 1000000;
 input = zeros(data_num, 3);
 output = zeros(data_num, 1);
 
 %% for check
 clc;
-% num_plus = 0;
-% num_minus = 0;
-% num_near = 0;
-
-% plus_pnts = [];
-% minus_pnts = [];
-% near_pnts = [];
-% 
-% plus_penet = [];
-% minus_penet = [];
-% near_penet = [];
 plus_pnts = zeros(data_num,3);
 minus_pnts = zeros(data_num,3);
 near_pnts = zeros(data_num,3);
@@ -72,36 +83,39 @@ plus_penet = zeros(data_num,1);
 minus_penet = zeros(data_num,1);
 near_penet = zeros(data_num,1);
 
-% closest_pnts = [];
-% closest_pnt_normals = [];
-% same_dist_pnts = [];
-
 % %% point generation
+z_range = [0.02, 0.042];
+r_range = [0.018, 0.026];
+z_range2 = [0.038, 0.042];
+r_range2 = [0, 0.018];
+tic
 parfor i_tmp = 1:data_num
     pnt_num = size(obj_v, 1);
     face_num = size(obj_f_v, 1);
     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%55    
-%     z_range = [0.023, 0.042];
-%     r_range = [0.018, 0.026];
-%     theta = rand(1) * 2 * pi;
-%     radius = r_range(1) + (r_range(2) - r_range(1)) * rand(1);
-%     
-%     pnt = [radius * cos(theta) ...
-%          radius * sin(theta), ...
-%         z_range(1) + (z_range(2) - z_range(1)) * rand(1)];    
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%55
-    z_range = [0.038, 0.042];
-    r_range = [0, 0.018];
-    u = 0.018* (rand(1) + rand(1));
-    if u > 0.018
-        r = 2 * 0.018 - u;
+    fraction = (z_range2(2)-z_range2(1))/(z_range(2)-z_range(1)) * ...
+        (r_range2(2)-r_range2(1))/(r_range(2)-r_range(1));
+    if i_tmp < floor(data_num*fraction)
+        u = 0.018* (rand(1) + rand(1));
+        if u > 0.018
+            r = 2 * 0.018 - u;
+        else
+            r = u;
+        end
+        theta = 2 * pi * rand(1);
+        z = z_range(1) + (z_range(2) - z_range(1)) * rand(1);
+        pnt = [r * cos(theta), r * sin(theta), z];
     else
-        r = u;
+        theta = rand(1) * 2 * pi;
+        radius = r_range(1) + (r_range(2) - r_range(1)) * rand(1);
+
+        pnt = [radius * cos(theta) ...
+             radius * sin(theta), ...
+            z_range(1) + (z_range(2) - z_range(1)) * rand(1)];
     end
-    theta = 2 * pi * rand(1);
-    z = z_range(1) + (z_range(2) - z_range(1)) * rand(1);
-    pnt = [r * cos(theta), r * sin(theta), z];
+ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%55
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%55
 
     input(i_tmp, :) = pnt;
@@ -113,6 +127,7 @@ parfor i_tmp = 1:data_num
     min_s = 0;
     min_t = 0;
     penet = 10000;
+    min_idx_same = 1;
     for j = 1:face_num
         % pnts in each row (pnt1 = tri(1, :))
         tri = zeros(3, 3);
@@ -170,7 +185,27 @@ parfor i_tmp = 1:data_num
         min_idx_same = min_idx;        
     end
     
-    if min_geo == 0 || min_geo == 1
+    if min_geo == 2 || min_geo == 0
+        if numel(min_idx_same) == 1
+            normal = obj_f_vn(min_idx_same,:);
+        else
+            normal = sum(obj_f_vn(min_idx_same,:));
+        end
+        normal = normal/norm(normal);
+        penet = dot(normal, pnt - min_pnt); % plus: outside, minus: inside
+    end
+    
+    if min_geo == 0
+        normal1 = obj_f_vn(min_idx_same(1),:);
+        penet_temp = dot(normal1(1:2),pnt(1:2)-min_pnt(1:2));
+        if pnt(3) <= 0.039 && pnt(3) >= 0.021
+            if sign(penet_temp) ~= sign(penet)
+                penet = penet_temp
+            end
+        end
+    end
+    
+    if min_geo == 1
         I_final = 1;
         for l = 1:numel(min_idx_same)-1
             position1 = [0, 0, 0];
@@ -180,62 +215,41 @@ parfor i_tmp = 1:data_num
                 position2 = position2 + obj_v(obj_f_v(min_idx_same(l+1), ll), :);
             end
             normal1 = obj_f_vn(min_idx_same(l),:);
+            normal2 = obj_f_vn(min_idx_same(l+1),:);
             position1 = position1 / 3;
             position2 = position2 / 3;
-            if sign((pnt - position1)*normal1.') ~= sign((position2 - position1)*normal1.')
+            check1 = sign((pnt - position1)*normal1.') ~= sign((position2 - position1)*normal1.');
+            check2 = sign((pnt - position2)*normal2.') ~= sign((position1 - position2)*normal2.');
+            if check1 == 1 && check2 == 0
                 I_final = l;
-            else
+            elseif check1 == 0 && check2 == 1
                 I_final = l+1;
+            elseif (check1 == 0 && check2 == 0) || (check1 == 1 && check2 == 1)
+                normal1 = obj_f_vn(min_idx_same(l),:);
+                normal2 = obj_f_vn(min_idx_same(l+1),:);
+                penet1 = dot(normal1, pnt - min_pnt); % plus: outside, minus: inside
+                penet2 = dot(normal2, pnt - min_pnt); % plus: outside, minus: inside
+                if sign(penet1) ~= sign(penet2)
+                    penet_temp = dot(normal1(1:2),pnt(1:2)-min_pnt(1:2));
+                    if sign(penet1) == sign(penet_temp)
+                        I_final = l;
+                    else
+                        I_final = l+1;
+                    end
+                else
+                    if abs(penet1) > abs(penet2)
+                        I_final = l;
+                    else
+                        I_final = l+1;
+                    end
+                end
             end
         end
+        
         normal = obj_f_vn(min_idx_same(I_final),:);
-
-        penet = dot(normal, pnt - min_pnt); % plus: outside, minus: inside
-    elseif min_geo == 2
-        normal = obj_f_vn(min_idx_same,:);
         penet = dot(normal, pnt - min_pnt); % plus: outside, minus: inside
     end
-    
     output(i_tmp) = penet;
-        
-%     closest_pnts = [closest_pnts; min_pnt];
-%     closest_pnt_normals = [closest_pnt_normals; normal];
-    
-%     if (penet > 0)
-%         % outside
-%         num_plus = num_plus + 1;
-%         plus_pnts = [plus_pnts; pnt];
-%     else
-%         % inside
-%         num_minus = num_minus + 1;
-%         minus_pnts = [minus_pnts; pnt];
-%     end
-    
-
-%     if (abs(penet) < 0.001)
-%         num_near = num_near + 1;
-%         near_pnts = [near_pnts; pnt];
-%         near_penet = [near_penet; penet];
-%     elseif (penet > 0)
-%         num_plus = num_plus + 1;
-%         plus_pnts = [plus_pnts; pnt];
-%         plus_penet = [plus_penet; penet];
-%     else
-%         num_minus = num_minus + 1;
-%         minus_pnts = [minus_pnts; pnt];
-%         minus_penet = [minus_penet; penet];
-%     end
-    
-%     if (abs(penet) < 0.001)
-%         near_pnts(i_tmp,:) = pnt;
-%         near_penet(i_tmp,:) = penet;
-%     elseif (penet > 0)
-%         plus_pnts(i_tmp,:) = pnt;
-%         plus_penet(i_tmp,:) = penet;
-%     else
-%         minus_pnts(i_tmp,:) = pnt;
-%         minus_penet(i_tmp,:) = penet;
-%     end
 
     if (penet > 0)
         plus_pnts(i_tmp,:) = pnt;
@@ -246,7 +260,7 @@ parfor i_tmp = 1:data_num
     end
 
 end
-
+t_calc = toc
 % s_near_pnts = sum(near_pnts.');
 % i_near_pnts = find(s_near_pnts == 0);
 % near_pnts(i_near_pnts,:) = [];
@@ -282,3 +296,49 @@ ylabel('y')
 % quiver3(tmp2(:, 1), tmp2(:, 2), tmp2(:, 3), tmp(:, 1), tmp(:, 2), tmp(:, 3),'k')
 
 hold off;
+
+%%
+N_data = 1000000;
+input_data = input(1:N_data,:).';
+output_data = output(1:N_data,:).';
+% M_input = max(input);
+% m_input = min(input);
+% M_output = max(output);
+% m_output = min(output);
+% for i = 1:N_data
+%     input_data(:,i) = ((input(i,:) - m_input)./(M_input - m_input)).';
+%     output_data(:,i) = ((output(i,:) - m_output)./(M_output - m_output)).';
+% end
+
+%% training
+net = feedforwardnet([50 50 50 50]);
+net.trainFcn = 'trainscg';
+net.divideParam.trainRatio = 70/100;
+net.divideParam.valRatio   = 15/100;
+net.divideParam.testRatio  = 15/100;
+net.trainParam.epochs = 10000;
+net.trainParam.min_grad = 1e-15;
+net.trainParam.max_fail = 500;
+net.inputs{1}.processFcns = { 'removeconstantrows', 'mapminmax' };
+net.outputs{2}.processFcns =  { 'removeconstantrows', 'mapminmax' };
+net.performParam.normalization = 'standard';
+net.performParam.regularization = 0.1;
+net.performFcn = 'mse';
+
+% [net, tr] = train(net,input.',output.','useParallel','yes','showResources','yes');
+[net, tr] = train(net,input_data,output_data,'useGPU','yes','showResources','yes');
+
+%% test
+tic
+output_net = net(input_data);
+toc
+[~,index] = sort(output_data);
+
+% output_net_sort = output_net(index).*(M_output - m_output) + m_output;
+% output_true_sort = output_data(index).*(M_output - m_output) + m_output;
+output_net_sort = output_net(index);
+output_true_sort = output_data(index);
+
+plot(output_net_sort,'.','color','r')
+hold on
+plot(output_true_sort,'.','color','k')
