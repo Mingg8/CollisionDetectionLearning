@@ -11,22 +11,14 @@ from tensorflow.keras.models import Sequential, model_from_json
 from tensorflow.keras.layers import Dense
 
 from module.normalize import Normalize
+from datetime import datetime
 
 
-def dataLoader(filename):
+def dataLoader(filename, input, output):
     mat_contents = loadmat(filename)
-    i_data = mat_contents['input']
-    o_data = mat_contents['output']
+    i_data = mat_contents[input]
+    o_data = mat_contents[output]
     return i_data, o_data
-
-def dataPlot(prediction, output):
-    sorted_ind = sorted(range(len(output)), key = lambda k:output[k])
-    sorted_prediction = [prediction[i] for i in sorted_ind]
-    sorted_output = [output[i] for i in sorted_ind]
-    x = range(len(output))
-
-    plt.plot(x, sorted_prediction, 'b', sorted_output, 'r')
-    plt.show()
 
 
 def trainValidTestSplit(i_data, o_data, tr, va, te):
@@ -57,7 +49,8 @@ def trainValidTestSplit(i_data, o_data, tr, va, te):
     return train_i, train_o, valid_i, valid_o, test_i, test_o
 
 class Train:
-    def __init__(self, m_file_name = "", w_file_name = ""):
+    def __init__(self, err, m_file_name = "", w_file_name = ""):
+        self.error_bound = err
         if (m_file_name == "" and w_file_name == ""):
             self.model = Sequential()
             # training
@@ -69,12 +62,8 @@ class Train:
         else:
             self.model = self.loadFile(m_file_name, w_file_name)
 
-    def train(self, filename, save):
+    def train(self, i_data, o_data, save):
         print(self.model)
-        i_data, o_data = dataLoader(filename)
-        i_data = i_data[1:100, :]
-        o_data = o_data[1:100]
-
         train_i, train_o, valid_i ,valid_o, test_i, test_o = \
             trainValidTestSplit(i_data, o_data, 0.7, 0.15, 0.15)
         # scaler = StandardScaler()
@@ -87,7 +76,7 @@ class Train:
 
         self.model.compile(loss = 'mean_squared_error', optimizer = 'adam',
             metric = ['accuracy'])
-        self.model.fit(train_input, train_output, epochs = 50,
+        self.model.fit(train_input, train_output, epochs = 10,
             batch_size = 100,
             validation_data = (valid_input, valid_output)
             )
@@ -96,7 +85,8 @@ class Train:
         accuracy = self.model.evaluate(test_input, test_output)
         print('Accuracy: %.2f' % (accuracy * 100))
 
-        self.evaluation(test_input, test_output, n)
+        min, max = self.evaluation(test_input, test_output, n)
+        return min, max
 
     def loadFile(self, m_file_name, w_file_name):
         # load model
@@ -106,7 +96,7 @@ class Train:
         loaded_model = model_from_json(loaded_model_json)
         # load weight
         loaded_model.load_weights(w_file_name)
-        print("Loaded model from disk")
+        print("Loaded model from disk, name: " + m_file_name)
         return loaded_model
     
     def saveFile(self, m_file_name, w_file_name):
@@ -114,25 +104,54 @@ class Train:
         model_json = self.model.to_json()
         with open(m_file_name, "w") as json_file:
             json_file.write(model_json)
+
         # serialize weights to HDF5
         self.model.save_weights(w_file_name)
-        print("Save model to disk")
+        print("Save model to disk, name: " + m_file_name)
 
     def evaluation(self, i_data, o_data, n):
         # predict
-        predictions = self.model.predict(i_data)
-        predict_output = n.dataUnnormalize(predictions)
+        prediction = self.model.predict(i_data)
+        predict_output = n.dataUnnormalize(prediction)
         real_output = n.dataUnnormalize(o_data)
-        # round predictions
-        # eval = np.linalg.norm(predict_output - real_output)
-        error = abs(predict_output - real_output)
-        print("max error: %.10f" %(np.max(error)))
-        dataPlot(predict_output, real_output)
 
+        sorted_ind = sorted(range(len(real_output)), key = lambda k:real_output[k])
+        sorted_prediction = np.array([predict_output[i] for i in sorted_ind])
+        sorted_output = np.array([real_output[i] for i in sorted_ind])
+
+        error = abs(sorted_prediction - sorted_output)
+
+        print("max error: %.10f" %(np.max(error)))
+
+        x = range(len(sorted_output))
+        plt.plot(x, sorted_prediction, 'b', sorted_output, 'r')
+        plt.savefig('figure/figure_'+str(datetime.now())+'.png')
+        plt.clf()
+        # plt.show()
+
+        for idx in range(len(sorted_output)):
+            if sorted_output[idx] > -0.004:
+                break
+        print("idx : " + str(idx))
+        left_i = 0
+        for i in range(idx, -1, -1):
+            if error[i] > self.error_bound:
+                left_i = i
+                break
+        print("left_i : " + str(left_i))
+        right_i = len(sorted_output) - 1
+        for j in range(idx, len(sorted_output)):
+            if error[j] > self.error_bound:
+                right_i = j
+                break
+        print("right_i : " + str(right_i))
+
+        print("bound: {} ~ {}".format(sorted_output[left_i], sorted_output[right_i]))
+        return sorted_output[left_i], sorted_output[right_i]
 
     def loadAndTest(self, file_path):
         filename = 'obj/data/data_final.mat'
-        i_data, o_data = dataLoader(file_path + filename)
+        i_data, o_data = dataLoader(file_path + filename, input, output)
         train_i, train_o, test_i, test_o = trainTestSplit(i_data, o_data)
         n = Normalize(test_i, test_o)
         test_input, test_output = n.dataNormalize(test_i, test_o)
@@ -143,8 +162,55 @@ class Train:
         self.evaluation(test_input, test_output, n)
 
 if __name__ == "__main__":
+    data_num = 300000
     file_path = '/home/mjlee/workspace/NutLearning/'
+    file_name = [
+        'obj/data/data_final1.mat',
+        'obj/data/data_final2.mat',
+        'obj/data/data_final3.mat',
+        'obj/data/data_final4.mat',
+        'obj/data/data_final5.mat']
+
+    add_ratio = 0.7
+    error_bound = 0.002
+    itr_num = 4
+
     # loadAndTest(file_path)
-    t = Train()
-    t.train(file_path + 'obj/data/data_final.mat', 0)
-    t.saveFile("model.json", "model.h5")
+    t = Train(error_bound)
+    i_data, o_data = dataLoader(file_path + file_name[0],
+        'input',
+        'output') # 1000k
+
+    i_data = i_data[1:data_num, :]
+    o_data = o_data[1:data_num, :]
+
+    a, b = t.train(i_data, o_data, False)
+    t.saveFile("model0.json", "model0.h5")
+    del t
+
+    for itr in range(1, len(file_name)):
+        t = Train(error_bound, "model" + str(itr-1) + ".json",
+            "model" + str(itr-1) + ".h5")
+        new_i, new_o = dataLoader(file_path + file_name[itr],
+            'input',
+            'output') # 1000k
+
+        new_i = new_i[1:data_num, :]
+        new_o = new_o[1:data_num, :]
+
+        change_num = 0
+        for i in range(len(new_i)):
+            if (new_o[i] < a or new_o[i] > b):
+                i_data[i] = new_i[i]
+                o_data[i] = new_o[i]
+                change_num += 1
+            else:
+                if np.random.rand(1) < add_ratio:
+                    i_data[i] = new_i[i]
+                    o_data[i] = new_o[i]
+                    change_num += 1
+        print("changing: {}".format(change_num))
+        del new_i, new_o
+        a, b = t.train(i_data, o_data, False)
+        t.saveFile('model'+str(itr) +'.json', "model"+str(itr)+".h5")
+        del t
