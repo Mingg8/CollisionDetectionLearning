@@ -76,17 +76,15 @@ class Train:
 
         self.model.compile(loss = 'mean_squared_error', optimizer = 'adam',
             metric = ['accuracy'])
-        self.model.fit(train_input, train_output, epochs = 10,
+        self.model.fit(train_input, train_output, epochs = 30,
             batch_size = 100,
             validation_data = (valid_input, valid_output)
             )
         
         test_input, test_output = n.dataNormalize(test_i, test_o)
-        accuracy = self.model.evaluate(test_input, test_output)
-        print('Accuracy: %.2f' % (accuracy * 100))
 
-        min, max = self.evaluation(test_input, test_output, n)
-        return min, max
+        min, max, left_i, right_i = self.evaluation(test_input, test_output, n)
+        return min, max, left_i ,right_i
 
     def loadFile(self, m_file_name, w_file_name):
         # load model
@@ -132,22 +130,21 @@ class Train:
         for idx in range(len(sorted_output)):
             if sorted_output[idx] > -0.004:
                 break
-        print("idx : " + str(idx))
         left_i = 0
         for i in range(idx, -1, -1):
             if error[i] > self.error_bound:
                 left_i = i
                 break
-        print("left_i : " + str(left_i))
+        print("left i: %d" %left_i)
         right_i = len(sorted_output) - 1
         for j in range(idx, len(sorted_output)):
             if error[j] > self.error_bound:
                 right_i = j
                 break
-        print("right_i : " + str(right_i))
+        print("right i: %d" %right_i)
 
         print("bound: {} ~ {}".format(sorted_output[left_i], sorted_output[right_i]))
-        return sorted_output[left_i], sorted_output[right_i]
+        return sorted_output[left_i], sorted_output[right_i], left_i, right_i
 
     def loadAndTest(self, file_path):
         filename = 'obj/data/data_final.mat'
@@ -184,7 +181,11 @@ if __name__ == "__main__":
     i_data = i_data[1:data_num, :]
     o_data = o_data[1:data_num, :]
 
-    a, b = t.train(i_data, o_data, False)
+    sorted_ind = sorted(range(len(o_data)), key = lambda k:o_data[k])
+    sorted_input = np.array([i_data[i] for i in sorted_ind])
+    sorted_output = np.array(sorted(o_data))
+
+    a, b, left_i, right_i = t.train(sorted_input, sorted_output, False)
     t.saveFile("model0.json", "model0.h5")
     del t
 
@@ -197,20 +198,21 @@ if __name__ == "__main__":
 
         new_i = new_i[1:data_num, :]
         new_o = new_o[1:data_num, :]
-
         change_num = 0
-        for i in range(len(new_i)):
+        for i in range(len(new_o)):
             if (new_o[i] < a or new_o[i] > b):
-                i_data[i] = new_i[i]
-                o_data[i] = new_o[i]
+                index = left_i + int((right_i - left_i) * np.random.rand(1))
+                sorted_input[index] = new_i[i]
+                sorted_output[index] = new_o[i]
                 change_num += 1
-            else:
-                if np.random.rand(1) < add_ratio:
-                    i_data[i] = new_i[i]
-                    o_data[i] = new_o[i]
-                    change_num += 1
+
         print("changing: {}".format(change_num))
         del new_i, new_o
-        a, b = t.train(i_data, o_data, False)
+
+        sorted_ind = sorted(range(len(sorted_output)), key = lambda k:sorted_output[k])
+        sorted_input = np.array([sorted_input[i] for i in sorted_ind])
+        sorted_output = np.array(sorted(sorted_output))
+        
+        a, b, left_i, right_i = t.train(sorted_input, sorted_output, False)
         t.saveFile('model'+str(itr) +'.json', "model"+str(itr)+".h5")
         del t
