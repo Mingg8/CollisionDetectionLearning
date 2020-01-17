@@ -1,5 +1,7 @@
-weight/*
 obj/*.mat
+figure/*
+old_results/*
+data/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
