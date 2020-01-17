@@ -1,5 +1,5 @@
 
-obj = readObj('coarse_bolt_v3_size_reduced.obj');
+obj = readObj('../obj_file/coarse_bolt_v3_size_reduced.obj');
 
 ps = obj.v;
 ns = obj.vn;
