@@ -54,9 +54,9 @@ class Train:
         if (m_file_name == "" and w_file_name == ""):
             self.model = Sequential()
             # training
-            self.model.add(Dense(250, input_dim = 3, activation = 'relu'))
-            self.model.add(Dense(250, activation = 'relu'))
-            self.model.add(Dense(250, activation = 'relu'))
+            self.model.add(Dense(256, input_dim = 3, activation = 'relu'))
+            self.model.add(Dense(256, activation = 'relu'))
+            self.model.add(Dense(256, activation = 'relu'))
             self.model.add(Dense(1, activation = 'tanh'))
 
         else:
@@ -77,7 +77,7 @@ class Train:
         self.model.compile(loss = 'mean_squared_error', optimizer = 'adam',
             metric = ['accuracy'])
         self.model.fit(train_input, train_output, epochs = 30,
-            batch_size = 100,
+            batch_size = 10,
             validation_data = (valid_input, valid_output)
             )
         
@@ -162,11 +162,12 @@ if __name__ == "__main__":
     data_num = 300000
     file_path = '/home/mjlee/workspace/NutLearning/'
     file_name = [
-        'obj/data/data_final1.mat',
-        'obj/data/data_final2.mat',
-        'obj/data/data_final3.mat',
-        'obj/data/data_final4.mat',
-        'obj/data/data_final5.mat']
+        'obj/data/data_final1.mat'
+        # 'obj/data/data_final2.mat',
+        # 'obj/data/data_final3.mat',
+        # 'obj/data/data_final4.mat',
+        # 'obj/data/data_final5.mat'
+        ]
 
     add_ratio = 0.7
     error_bound = 0.002
@@ -201,7 +202,10 @@ if __name__ == "__main__":
         change_num = 0
         for i in range(len(new_o)):
             if (new_o[i] < a or new_o[i] > b):
-                index = left_i + int((right_i - left_i) * np.random.rand(1))
+                if change_num < right_i - left_i :    
+                    index = left_i + int((right_i - left_i) * np.random.rand(1))
+                else:
+                    index = int(np.random.rand(1) * len(new_o))
                 sorted_input[index] = new_i[i]
                 sorted_output[index] = new_o[i]
                 change_num += 1
