@@ -24,17 +24,17 @@ def training(
     ):
     if new:
         t = Train(
-            error_bound,
-            save_directory = figure_save_directory
+            model_save_directory,
+            figure_save_directory,
+            error_bound
             )
     else:
         t = Train(
+            model_save_directory,
+            figure_save_directory,
             error_bound,
             m_file_name = m_file_name,
-            w_file_name= = w_file_name,
-            model_save_directory = model_save_directory,
-            save_directory = figure_save_directory,
-            model_
+            w_file_name= w_file_name
         )
     i_data, o_data = t.dataLoader(
         file_path + file_name[0],
@@ -51,7 +51,7 @@ def training(
     real_input = []
     real_output = []
     for i in range(len(o_data)):
-        if sorted_output[i] > 0.002:
+        if sorted_output[i] > 0.004:
             break
         if sorted_output[i] > -0.002:
             real_input.append(sorted_input[i])
@@ -70,18 +70,18 @@ def training(
     model_file = "/model" + now_string + ".json"
     weight_file = "/model" + now_string + ".h5"
     t.saveFile(
-        model_save_directory + model_file,
-        model_save_directory + weight_file
+        model_file,
+        weight_file
         )
     del t
 
     for itr in range(1, len(file_name)):
         t = Train(
+            model_save_directory,
+            figure_save_directory,
             error_bound,
             model_file,
-            weight_file,
-            model_save_directory,
-            figure_save_directory
+            weight_file
             )
         new_i, new_o = t.dataLoader(
             file_path + file_name[itr],
@@ -105,7 +105,19 @@ def training(
         sorted_ind = sorted(range(len(sorted_output)), key = lambda k:sorted_output[k])
         sorted_input = np.array([sorted_input[i] for i in sorted_ind])
         sorted_output = np.array(sorted(sorted_output))
-        
+
+        # real_input = []
+        # real_output = []
+        # for i in range(len(o_data)):
+        #     if sorted_output[i] > 0.002:
+        #         break
+        #     if sorted_output[i] > -0.002:
+        #         real_input.append(sorted_input[i])
+        #         real_output.append(sorted_output[i])
+        # sorted_input = np.array(real_input)
+        # sorted_output = np.array(real_output)
+        # del real_output, real_input
+            
         a, b, left_i, right_i = t.train(
             sorted_input,
             sorted_output
@@ -125,7 +137,7 @@ if __name__ == "__main__":
     file_path = str(os.getcwd())
     now = datetime.now()
     now_string = now.strftime("%Y-%m-%d_%H:%M")
-    now_string = "2020-01-17_14:33"
+    # now_string = "2020-01-17_14:33"
     model_save_directory = file_path + '/old_results/' + now_string
     figure_save_directory = file_path + '/figure/' + now_string
     try:
@@ -144,6 +156,38 @@ if __name__ == "__main__":
     # t.loadAndTest(file_path)
 
     ############ TRAINING
+    try:
+        os.makedirs(model_save_directory)
+    except:
+        print("already exists")
+
+    data_num = 1107991
+    file_name = [
+        '/obj/data/data_broad.mat',
+        # '/obj/data/data_final1.mat',
+        # '/obj/data/data_final1.mat'
+        # '/obj/data/data_final2.mat',
+        # '/obj/data/data_final3.mat',
+        # '/obj/data/data_final4.mat',
+        # '/obj/data/data_final5.mat'
+        ]
+    error_bound = 0.001
+    training(
+        error_bound,
+        file_path,
+        figure_save_directory,
+        model_save_directory,
+        file_name,
+        data_num
+        )
+    
+    ############ LOAD & TRAIN
+    # now_string = "2020-01-17_14:33"
+    # model_save_directory = file_path + '/old_results/' + now_string
+    # figure_save_directory = file_path + '/figure/' + now_string
+    # model_file_name = "/model0.json"
+    # weight_file_name = "/model0.h5"
+
     # try:
     #     os.makedirs(model_save_directory)
     # except:
@@ -154,10 +198,6 @@ if __name__ == "__main__":
     #     '/obj/data/data_final1.mat',
     #     '/obj/data/data_final1.mat',
     #     '/obj/data/data_final1.mat'
-    #     # '/obj/data/data_final2.mat',
-    #     # '/obj/data/data_final3.mat',
-    #     # '/obj/data/data_final4.mat',
-    #     # '/obj/data/data_final5.mat'
     #     ]
     # error_bound = 0.002
     # training(
@@ -166,39 +206,11 @@ if __name__ == "__main__":
     #     figure_save_directory,
     #     model_save_directory,
     #     file_name,
-    #     data_num
+    #     data_num,
+    #     False,
+    #     model_file_name,
+    #     weight_file_name
     #     )
-    
-    ############ LOAD & TRAIN
-    now_string = "2020-01-17_14:33"
-    model_save_directory = file_path + '/old_results/' + now_string
-    figure_save_directory = file_path + '/figure/' + now_string
-    model_file_name = "/model0.json"
-    weight_file_name = "/model0.h5"
-
-    try:
-        os.makedirs(model_save_directory)
-    except:
-        print("already exists")
-
-    data_num = 1000000
-    file_name = [
-        '/obj/data/data_final1.mat',
-        '/obj/data/data_final1.mat',
-        '/obj/data/data_final1.mat'
-        ]
-    error_bound = 0.002
-    training(
-        error_bound,
-        file_path,
-        figure_save_directory,
-        model_save_directory,
-        file_name,
-        data_num,
-        False,
-        model_file_name,
-        weight_file_name
-        )
     
 
 
