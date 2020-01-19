@@ -11,15 +11,17 @@ from module.normalize import Normalize
 from datetime import datetime
 
 class Train:
-    def __init__(self, err = 0.002,
+    def __init__(self,
+        model_save_directory,
+        save_directory,
+        err = 0.002,
         m_file_name = "",
-        w_file_name = "",
-        model_save_directory = 'old_results',
-        save_directory = 'figure'
+        w_file_name = ""
         ):
         self.error_bound = err
         self.figure_save_dir = save_directory
         self.model_save_dir = model_save_directory
+        print("dir: "+self.model_save_dir)
         if (m_file_name == "" and w_file_name == ""):
             self.model = Sequential()
             # training
@@ -42,7 +44,7 @@ class Train:
 
         self.model.compile(loss = 'mean_squared_error', optimizer = 'adam',
             metric = ['accuracy'])
-        self.model.fit(train_input, train_output, epochs = 50,
+        self.model.fit(train_input, train_output, epochs = 500,
             batch_size = 10,
             validation_data = (valid_input, valid_output)
             )
