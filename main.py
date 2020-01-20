@@ -45,25 +45,33 @@ def training(
     i_data = i_data[1:data_num, :]
     o_data = o_data[1:data_num, :]
 
-    sorted_ind = sorted(range(len(o_data)), key = lambda k:o_data[k])
-    sorted_i_data = np.array([i_data[i] for i in sorted_ind])
-    sorted_o_data = np.array(sorted(o_data))
+    sorted_input = np.array(i_data)
+    sorted_output = np.array(o_data)
 
-    prev_bound = -0.002
-    bound = 0.000
-    sorted_input = []
-    sorted_output = []
-    for i in range(len(sorted_o_data)):
-        if sorted_o_data[i] > bound:
-            last_i = i
-            break
-        sorted_input.append(sorted_i_data[i])
-        sorted_output.append(sorted_o_data[i])
-    sorted_input = np.array(sorted_input)
-    sorted_output = np.array(sorted_output)
+    # 1. sorting data
+    # sorted_ind = sorted(range(len(o_data)), key = lambda k:o_data[k])
+    # sorted_i_data = np.array([i_data[i] for i in sorted_ind])
+    # sorted_o_data = np.array(sorted(o_data))
+
+    # 2. cut data
+    # prev_bound = -0.002
+    # bound = 0.000
+    # sorted_input = []
+    # sorted_output = []
+
+    # for i in range(len(sorted_o_data)):
+    #     if sorted_o_data[i] > bound:
+    #         last_i = i
+    #         break
+    #     sorted_input.append(sorted_i_data[i])
+    #     sorted_output.append(sorted_o_data[i])
+
+    # sorted_input = np.array(sorted_input)
+    # sorted_output = np.array(sorted_output)
 
     print("i: {}, o: {}".format(np.shape(sorted_input), np.shape(sorted_output)))
 
+    # 3. train
     a, b, left_i, right_i = t.train(
         sorted_input,
         sorted_output
@@ -79,15 +87,46 @@ def training(
         )
     del t
 
-    # for itr in range(1, len(file_name)):
-    itr = 0
-    itr_num = 0
-    while (bound < 0.004) :
-        itr_num += 1
-        if (itr_num > 10):
-            break
+    # itr = 0
+    # itr_num = 0
+    # iteration with different interval of data
+    # while (bound < 0.004) :
+    #     itr_num += 1
+    #     if (itr_num > 10):
+    #         break
 
-        print("RESULT: \n  b: {}, bound: {}".format(b, bound))
+    #     print("RESULT: \n  b: {}, bound: {}".format(b, bound))
+    #     t = Train(
+    #         model_save_directory,
+    #         figure_save_directory,
+    #         error_bound,
+    #         model_file,
+    #         weight_file
+    #         )
+
+    #     if (b > bound - EPS):
+    #         # next stage!
+    #         prev_bound = bound
+    #         bound += 0.0005
+
+    #         for ll in range(last_i, len(sorted_o_data)):
+    #             sorted_input.append(sorted_i_data[ll])
+    #             sorted_output.append(sorted_o_data[ll])
+    #             if sorted_o_data[ll] > bound:
+    #                 last_i = i
+    #                 break
+    #         sorted_input = np.array(sorted_input)
+    #         sorted_output = np.array(sorted_output)
+
+    #     # repeat
+    #     a, b, left_i, right_i = t.train(
+    #         sorted_input,
+    #         sorted_output
+    #     )
+
+
+    # iteration with different data set
+    for itr in range(1, len(file_name)):
         t = Train(
             model_save_directory,
             figure_save_directory,
@@ -96,61 +135,46 @@ def training(
             weight_file
             )
 
-        if (b > bound - EPS):
-            # next stage!
-            prev_bound = bound
-            bound += 0.0005
+        new_i, new_o = t.dataLoader(
+            file_path + file_name[itr],
+            'input',
+            'output') # 1000k
 
-            for ll in range(last_i, len(sorted_o_data)):
-                sorted_input.append(sorted_i_data[ll])
-                sorted_output.append(sorted_o_data[ll])
-                if sorted_o_data[ll] > bound:
-                    last_i = i
-                    break
-            sorted_input = np.array(sorted_input)
-            sorted_output = np.array(sorted_output)
+        change_num = 0
+        for i in range(len(new_o)):
+            if (new_o[i] < a or new_o[i] > b):
+                if change_num < right_i - left_i :    
+                    index = left_i + int((right_i - left_i) * np.random.rand(1))
+                else:
+                    index = int(np.random.rand(1) * len(new_o))
+                sorted_input[index] = new_i[i]
+                sorted_output[index] = new_o[i]
+                change_num += 1
 
-        # repeat
+        print("changing: {}".format(change_num))
+        del new_i, new_o
+
+        sorted_ind = sorted(range(len(sorted_output)), key = lambda k:sorted_output[k])
+        sorted_input = np.array([sorted_input[i] for i in sorted_ind])
+        sorted_output = np.array(sorted(sorted_output))
+
+        real_input = []
+        real_output = []
+        for i in range(len(o_data)):
+            if sorted_output[i] > 0.002:
+                break
+            if sorted_output[i] > -0.002:
+                real_input.append(sorted_input[i])
+                real_output.append(sorted_output[i])
+        sorted_input = np.array(real_input)
+        sorted_output = np.array(real_output)
+        del real_output, real_input
+            
         a, b, left_i, right_i = t.train(
             sorted_input,
             sorted_output
-        )
-
-        # change_num = 0
-        # for i in range(len(new_o)):
-        #     if (new_o[i] < a or new_o[i] > b):
-        #         if change_num < right_i - left_i :    
-        #             index = left_i + int((right_i - left_i) * np.random.rand(1))
-        #         else:
-        #             index = int(np.random.rand(1) * len(new_o))
-        #         sorted_input[index] = new_i[i]
-        #         sorted_output[index] = new_o[i]
-        #         change_num += 1
-
-        # print("changing: {}".format(change_num))
-        # del new_i, new_o
-# 
-        # sorted_ind = sorted(range(len(sorted_output)), key = lambda k:sorted_output[k])
-        # sorted_input = np.array([sorted_input[i] for i in sorted_ind])
-        # sorted_output = np.array(sorted(sorted_output))
-
-        # real_input = []
-        # real_output = []
-        # for i in range(len(o_data)):
-        #     if sorted_output[i] > 0.002:
-        #         break
-        #     if sorted_output[i] > -0.002:
-        #         real_input.append(sorted_input[i])
-        #         real_output.append(sorted_output[i])
-        # sorted_input = np.array(real_input)
-        # sorted_output = np.array(real_output)
-        # del real_output, real_input
-            
-        # a, b, left_i, right_i = t.train(
-        #     sorted_input,
-        #     sorted_output
-        #     )
-        # 
+            )
+        
         now = datetime.now()
         now_string = now.strftime("_%H:%M")
         model_file = "/model" + now_string + ".json"
@@ -192,9 +216,10 @@ if __name__ == "__main__":
     data_num = 1107991
     # data_num = 100
     file_name = [
-        '/obj/data/data_broad.mat',
+        '/obj/data/cylinder_new.mat'
+        # '/obj/data/cylinder_data.mat'
+        # '/obj/data/data_broad.mat',
         # '/obj/data/data_final1.mat',
-        # '/obj/data/data_final1.mat'
         # '/obj/data/data_final2.mat',
         # '/obj/data/data_final3.mat',
         # '/obj/data/data_final4.mat',

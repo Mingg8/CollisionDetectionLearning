@@ -1,7 +1,9 @@
 import sys
 import numpy as np
 from scipy.io import loadmat
+import tensorflow as tf
 from tensorflow import keras
+import tensorflow.keras.backend as K
 from tensorflow.keras.models import Sequential, model_from_json
 from tensorflow.keras.layers import Dense
 
@@ -22,6 +24,8 @@ class Train:
         self.figure_save_dir = save_directory
         self.model_save_dir = model_save_directory
         print("dir: "+self.model_save_dir)
+
+        tf.compat.v1.disable_eager_execution()
         if (m_file_name == "" and w_file_name == ""):
             self.model = Sequential()
             # training
@@ -32,6 +36,18 @@ class Train:
 
         else:
             self.model = self.loadFile(m_file_name, w_file_name)
+        print(self.model.output)
+        print(self.model.input)
+
+        self.predict_func = K.function(
+            self.model.input,
+            self.model.output)
+
+        self.grad = keras.layers.Lambda(
+            lambda z: K.gradients(z[0][0], z[1])) \
+                ([self.model.output, self.model.input])
+        self.grad_calc = K.function(self.model.input, self.grad)
+        
 
     def train(self, i_data, o_data):
         print(self.model)
@@ -42,10 +58,11 @@ class Train:
         train_input, train_output = n.dataNormalize(train_i, train_o)
         valid_input, valid_output = n.dataNormalize(valid_i, valid_o)
 
-        self.model.compile(loss = 'mean_squared_error', optimizer = 'adam',
-            metric = ['accuracy'])
-        self.model.fit(train_input, train_output, epochs = 3,
-            batch_size = 50,
+        self.compile_model([1, 3.0e-4])
+        self.model.fit(train_input, train_output,
+            shuffle = True,
+            epochs = 50,
+            batch_size = 5,
             validation_data = (valid_input, valid_output)
             )
         
@@ -56,6 +73,21 @@ class Train:
             test_output,
             n)
         return min, max, left_i ,right_i
+    
+    def compile_model(self, w):
+        def mse_loss(y_true, y_pred):
+            mse_loss = keras.losses.mse(y_true, y_pred)
+            return w[0] * mse_loss
+
+        def grad_norm_loss(y_true, y_pred):
+            return w[1] * K.mean(K.square(self.grad))
+        
+        self.model.compile(
+            loss = 'mean_squared_error',
+            optimizer = 'adam',
+            metrics = [mse_loss, grad_norm_loss]
+            # metric = mse_loss
+        )
 
     def loadFile(self, m_file_name, w_file_name):
         # load model
@@ -88,7 +120,10 @@ class Train:
 
     def evaluation(self, i_data, o_data, n):
         # predict
-        prediction = self.model.predict(i_data)
+        # prediction = self.model.predict(i_data)
+        prediction = np.squeeze(self.predict_func(i_data), axis = 0)
+        grad_pred = np.squeeze(self.grad_calc(i_data), axis = 0)
+
         predict_output = n.dataUnnormalize(prediction)
         real_output = n.dataUnnormalize(o_data)
 
