@@ -44,8 +44,8 @@ class Train:
 
         self.model.compile(loss = 'mean_squared_error', optimizer = 'adam',
             metric = ['accuracy'])
-        self.model.fit(train_input, train_output, epochs = 500,
-            batch_size = 10,
+        self.model.fit(train_input, train_output, epochs = 3,
+            batch_size = 50,
             validation_data = (valid_input, valid_output)
             )
         
@@ -103,8 +103,8 @@ class Train:
         x = range(len(sorted_output))
         plt.plot(x, sorted_prediction, 'b', sorted_output, 'r')
         now = datetime.now()
-        now_string = now.strftime("%Y-%m-%d_%H:%M")
-        plt.savefig(self.figure_save_dir +'/figure.png')
+        now_string = now.strftime("%_Y-%m-%d_%H:%M")
+        plt.savefig(self.figure_save_dir +'/figure'+now_string+ '.png')
         plt.clf()
         # plt.show()
 
