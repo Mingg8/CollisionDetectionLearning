@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+import math
 from scipy.io import loadmat
 import tensorflow as tf
 from tensorflow import keras
@@ -32,23 +33,20 @@ class Train:
             self.model.add(Dense(256, input_dim = 3, activation = 'relu'))
             self.model.add(Dense(256, activation = 'relu'))
             self.model.add(Dense(256, activation = 'relu'))
-            self.model.add(Dense(1, activation = 'tanh'))
+            self.model.add(Dense(4, activation = 'tanh'))
 
         else:
             self.model = self.loadFile(m_file_name, w_file_name)
-        print(self.model.output)
-        print(self.model.input)
 
         self.predict_func = K.function(
             self.model.input,
             self.model.output)
 
         self.grad = keras.layers.Lambda(
-            lambda z: K.gradients(z[0][0], z[1])) \
+            lambda z: K.gradients(z[0][0, :], z[1]))\
                 ([self.model.output, self.model.input])
         self.grad_calc = K.function(self.model.input, self.grad)
         
-
     def train(self, i_data, o_data):
         print(self.model)
         train_i, train_o, valid_i ,valid_o, test_i, test_o = \
@@ -58,11 +56,11 @@ class Train:
         train_input, train_output = n.dataNormalize(train_i, train_o)
         valid_input, valid_output = n.dataNormalize(valid_i, valid_o)
 
-        self.compile_model([1, 3.0e-4])
+        self.compile_model([1, 0.01])
         self.model.fit(train_input, train_output,
             shuffle = True,
             epochs = 50,
-            batch_size = 5,
+            batch_size = 50,
             validation_data = (valid_input, valid_output)
             )
         
@@ -76,17 +74,21 @@ class Train:
     
     def compile_model(self, w):
         def mse_loss(y_true, y_pred):
-            mse_loss = keras.losses.mse(y_true, y_pred)
-            return w[0] * mse_loss
-
-        def grad_norm_loss(y_true, y_pred):
-            return w[1] * K.mean(K.square(self.grad))
+            mse_loss = w[0] * K.mean(K.square(y_true[:,0]-y_pred[:,0]))
+            return mse_loss
         
+        def grad_loss(y_true, y_pred):
+            grad_normal_loss = -w[1] * K.mean(K.sum(K.l2_normalize((self.grad) * y_true[:,1:4], axis=1)))
+            return grad_normal_loss
+        
+        def tot_loss(y_true, y_pred):
+            return mse_loss(y_true, y_pred) + grad_loss(y_true, y_pred)
+
         self.model.compile(
-            loss = 'mean_squared_error',
+            loss = tot_loss,
             optimizer = 'adam',
-            metrics = [mse_loss, grad_norm_loss]
-            # metric = mse_loss
+            metrics = [mse_loss, grad_loss]
+            # metrics = [mse_loss]
         )
 
     def loadFile(self, m_file_name, w_file_name):
@@ -121,11 +123,13 @@ class Train:
     def evaluation(self, i_data, o_data, n):
         # predict
         # prediction = self.model.predict(i_data)
-        prediction = np.squeeze(self.predict_func(i_data), axis = 0)
-        grad_pred = np.squeeze(self.grad_calc(i_data), axis = 0)
+        prediction = np.squeeze(self.predict_func(i_data))
+        grad_pred = np.squeeze(self.grad_calc(i_data))
 
         predict_output = n.dataUnnormalize(prediction)
+        predict_output = predict_output[:, 0]
         real_output = n.dataUnnormalize(o_data)
+        real_output = real_output[:, 0]
 
         sorted_ind = sorted(range(len(real_output)), key = lambda k:real_output[k])
         sorted_prediction = np.array([predict_output[i] for i in sorted_ind])
@@ -219,8 +223,8 @@ class Train:
 
         for i in range(len(o_data)):
             if i % 100 < int(tr * 100) :
-                train_i.append(i_data[i,:])
-                train_o.append(o_data[i])
+                train_i.append(i_data[i, :])
+                train_o.append(o_data[i, :])
             elif i % 100 < int((tr + va) * 100):
                 valid_i.append(i_data[i, :])
                 valid_o.append(o_data[i, :])

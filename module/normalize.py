@@ -15,7 +15,8 @@ class Normalize():
     def dataNormalize(self, i_data, o_data):
         for l in range(3):
             i_data[:, l] = self.a_i[l] * i_data[:, l] + self.b_i[l]
-        o_data = self.a_o * o_data + self.b_o
+        for l in range(4):
+            o_data[:, l] = self.a_o[l] * o_data[:, l] + self.b_o[l]
         return i_data, o_data
 
     def dataUnnormalize(self, o_data):

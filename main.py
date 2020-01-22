@@ -42,12 +42,13 @@ def training(
         'input',
         'output') # 1000k
 
-    i_data = i_data[1:data_num, :]
-    o_data = o_data[1:data_num, :]
+    i_data = i_data[0:data_num, :]
+    o_data = o_data[0:data_num, :]
 
     sorted_input = np.array(i_data)
     sorted_output = np.array(o_data)
 
+    ##################### DATA PREPROCESSING ###################### 
     # 1. sorting data
     # sorted_ind = sorted(range(len(o_data)), key = lambda k:o_data[k])
     # sorted_i_data = np.array([i_data[i] for i in sorted_ind])
@@ -68,6 +69,7 @@ def training(
 
     # sorted_input = np.array(sorted_input)
     # sorted_output = np.array(sorted_output)
+    ##################### DATA PREPROCESSING ###################### 
 
     print("i: {}, o: {}".format(np.shape(sorted_input), np.shape(sorted_output)))
 
@@ -213,10 +215,11 @@ if __name__ == "__main__":
     except:
         print("already exists")
 
-    data_num = 1107991
+    data_num = 1000000
     # data_num = 100
     file_name = [
-        '/obj/data/cylinder_new.mat'
+        '/obj/data/data_final_include_normal.mat'
+        # '/obj/data/cylinder_new.mat'
         # '/obj/data/cylinder_data.mat'
         # '/obj/data/data_broad.mat',
         # '/obj/data/data_final1.mat',
