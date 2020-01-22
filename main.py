@@ -9,6 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from module.normalize import Normalize
 from module.training import Train
 from datetime import datetime
+from config import config
 
 
 def training(
@@ -215,20 +216,12 @@ if __name__ == "__main__":
     except:
         print("already exists")
 
-    data_num = 1000000
+    data_num = config["data_num"]
     # data_num = 100
     file_name = [
         '/obj/data/data_final_include_normal.mat'
-        # '/obj/data/cylinder_new.mat'
-        # '/obj/data/cylinder_data.mat'
-        # '/obj/data/data_broad.mat',
-        # '/obj/data/data_final1.mat',
-        # '/obj/data/data_final2.mat',
-        # '/obj/data/data_final3.mat',
-        # '/obj/data/data_final4.mat',
-        # '/obj/data/data_final5.mat'
         ]
-    error_bound = 0.001
+    error_bound = config["error_bound"]
     training(
         error_bound,
         file_path,

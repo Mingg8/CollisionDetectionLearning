@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 
 from module.normalize import Normalize
 from datetime import datetime
+from config import config
 
 class Train:
     def __init__(self,
@@ -56,11 +57,11 @@ class Train:
         train_input, train_output = n.dataNormalize(train_i, train_o)
         valid_input, valid_output = n.dataNormalize(valid_i, valid_o)
 
-        self.compile_model([1, 0.01])
+        self.compile_model([1, 0.1])
         self.model.fit(train_input, train_output,
             shuffle = True,
-            epochs = 50,
-            batch_size = 50,
+            epochs = config["epoch"],
+            batch_size = config["batch"],
             validation_data = (valid_input, valid_output)
             )
         
@@ -78,7 +79,7 @@ class Train:
             return mse_loss
         
         def grad_loss(y_true, y_pred):
-            grad_normal_loss = -w[1] * K.mean(K.sum(K.l2_normalize((self.grad) * y_true[:,1:4], axis=1)))
+            grad_normal_loss = w[1] * tf.acos(K.mean(K.sum(K.l2_normalize(self.grad) * y_true[:,1:4], axis=1)))
             return grad_normal_loss
         
         def tot_loss(y_true, y_pred):
