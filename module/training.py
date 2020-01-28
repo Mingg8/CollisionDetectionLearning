@@ -28,6 +28,7 @@ class Train:
         print("dir: "+self.model_save_dir)
 
         tf.compat.v1.disable_eager_execution()
+
         if (m_file_name == "" and w_file_name == ""):
             self.model = Sequential()
             # training
@@ -36,17 +37,54 @@ class Train:
             self.model.add(Dense(256, activation = 'relu'))
             self.model.add(Dense(4, activation = 'tanh'))
 
+            self.pos = self.model.input
+
+            # model_input = keras.layers.Input(shape = (3, ))
+            # self.pos = model_input
+            # hlayer1 = keras.layers.Dense(256, activation = tf.nn.relu)
+            # hlayer2 = keras.layers.Dense(256, activation = tf.nn.relu)
+            # hlayer3 = keras.layers.Dense(256, activation = tf.nn.relu)
+            # dropout = keras.layers.Dropout(0.25)
+            # fclayer = keras.layers.Dense(1, activation = tf.nn.tanh)
+
+            # self.Cq = fclayer(dropout(hlayer3(hlayer2(hlayer1(self.pos)))))
+            # self.model = keras.models.Model(inputs = model_input, outputs = self.Cq)
+
         else:
             self.model = FileIO.loadfile(self.model_save_dir, m_file_name, w_file_name)
+        
+        print(self.model.summary())
 
         self.predict_func = K.function(
-            self.model.input,
+            self.pos,
             self.model.output)
 
         self.grad = keras.layers.Lambda(
-            lambda z: K.gradients(z[0][0, :], z[1]))\
-                ([self.model.output, self.model.input])
-        self.grad_calc = K.function(self.model.input, self.grad)
+            lambda z: K.gradients(z[0][:, 0], z[1]))\
+                ([self.model.output, self.pos])
+        self.grad_calc = K.function(self.pos, self.grad)
+
+        # self.x = tf.placeholder(tf.float32, [None, 3])
+        # self.y = tf.placeholder(tf.float32, [None, 4])
+
+        # W1 = tf.Variable(tf.random_normal([3, 256], stddev= 0.3), name = 'W1')
+        # b1 = tf.Variable(tf.random_normal([256]), name = 'b1')
+        # W2 = tf.Variable(tf.random_normal([256, 256], stddev = 0.3), name = 'W2')
+        # b2 = tf.Variable(tf.random_normal([256], stddev = 0.3), name = 'b2')
+        # W3 = tf.Variable(tf.random_normal([256, 256], stddev = 0.3), name = 'W3')
+        # b3 = tf.Variable(tf.random_normal([256], stddev = 0.3), name = 'b3')
+        # W4 = tf.Variable(tf.random_normal([256, 4], stddev = 0.3), name = 'W4')
+        # b4 = tf.Variable(tf.random_normal([256], stddev = 0.3), name = 'b4')
+
+        # hidden_out1 = tf.add(tf.matmul(x, W1), b1)
+        # hidden_out1 = tf.nn.relu(hidden_out1)
+        # hidden_out2 = tf.add(tf.matmul(hidden_out1, W2), b2)
+        # hidden_out2 = tf.nn.relu(hidden_out2)
+        # hidden_out3 = tf.add(tf.matmul(hidden_out3, W3), b3)
+        # hidden_out3 = tf.nn.relu(hidden_out3)
+        # hidden_out4 = tf.add(tf.matmul(hidden_out4, W4), b4)
+        # self.y_ = tf.nn.tanh(hidden_out4)
+
         
     def train(self, i_data, o_data):
         train_i, train_o, valid_i ,valid_o, test_i, test_o = \
@@ -65,6 +103,31 @@ class Train:
             validation_data = (valid_input, valid_output)
             )
 
+        # init_op = tf.initialize_all_variables()
+        
+        # sess = tf.Session()
+        # sess.run(init_op)
+
+        # cost = 0
+        # diff = 1
+
+        # epoch_values = []
+
+        # for i in range(config["epoch"]):
+        #     if i > 1 and diff < .0001:
+        #         print("change in cost %g; convergence. " %diff)
+        #         break
+        #     else:
+        #         step = sess.run(self.optimiser, feed_dict = {self.x: trainX, self.y: trainY})
+        #         if i % 10 == 0:
+        #             epoch_values.append(i)
+        #             summary_results, train_accuracy, newCost = sess.run(
+        #                 [self.optimiser, self.cost],
+        #                 feed_dict = {self.x: trainX, self.y: trainY}
+        #             )
+        #             diff = abs(newCost - cost)
+        #             cost = newCost
+
         min, max, left_i, right_i = self.evaluation(
             test_input,
             test_output,
@@ -78,7 +141,7 @@ class Train:
         
         def grad_loss(y_true, y_pred):
             grad_normal_loss = w[1] * K.mean(tf.math.acos(K.sum(
-                tf.math.l2_normalize(self.grad) * y_true[:,1:4], axis = 1)))
+                tf.math.l2_normalize(self.grad) * y_true[:,1:4], axis = 0)))
             return grad_normal_loss
         
         def tot_loss(y_true, y_pred):
@@ -90,6 +153,10 @@ class Train:
             metrics = [mse_loss, grad_loss]
             # metrics = [mse_loss]
         )
+
+        # self.cost = config["weight"][0] & tf.nn.l2_loss(self.y[:, 0] - self.y_[:, 0],
+        #                                         name = "squared_error_cost")
+        # self.optimiser = tf.train.AdamOptimizer(learning_rate = 0.5).minimize(self.cost)
 
     
     def saveFile(self, m_file_name, w_file_name):
@@ -105,14 +172,16 @@ class Train:
 
     def evaluation(self, i_data, o_data, n):
         # predict
-        # prediction = self.model.predict(i_data)
+        # prediction = self.model.predict(np.transpose(i_data))
+        a = self.predict_func(i_data)
         prediction = np.squeeze(self.predict_func(i_data)) # normalized
         grad_pred = np.squeeze(self.grad_calc(i_data)) # normalized
 
         predict_output = n.oDataUnnormalize(prediction)
-        predict_output = predict_output[:, 0]
         real_output = n.oDataUnnormalize(o_data)
+        predict_output = predict_output[:, 0]
         real_output = real_output[:, 0]
+
         real_input = n.iDataUnnormalize(i_data)
         predict_grad = n.gDataUnnormalize(grad_pred)
 
