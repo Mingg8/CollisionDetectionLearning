@@ -8,6 +8,7 @@ from sklearn.preprocessing import StandardScaler
 
 from module.normalize import Normalize
 from module.training import Train
+from module.file_io import FileIO
 from datetime import datetime
 from config import config
 
@@ -38,7 +39,7 @@ def training(
             m_file_name = m_file_name,
             w_file_name= w_file_name
         )
-    i_data, o_data = t.dataLoader(
+    i_data, o_data = FileIO.dataLoader(
         file_path + file_name[0],
         'input',
         'output') # 1000k
@@ -51,11 +52,11 @@ def training(
 
     ##################### DATA PREPROCESSING ###################### 
     # 1. sorting data
-    # sorted_ind = sorted(range(len(o_data)), key = lambda k:o_data[k])
+    # sorted_ind = sorted(range(len(o_data)), key = lambda k:o_data[k][0])
     # sorted_i_data = np.array([i_data[i] for i in sorted_ind])
-    # sorted_o_data = np.array(sorted(o_data))
+    # sorted_o_data = np.array([o_data[i] for i in sorted_ind])
 
-    # 2. cut data
+    # # 2. cut data
     # prev_bound = -0.002
     # bound = 0.000
     # sorted_input = []
@@ -65,6 +66,12 @@ def training(
     #     if sorted_o_data[i] > bound:
     #         last_i = i
     #         break
+    #     sorted_input.append(sorted_i_data[i])
+    #     sorted_output.append(sorted_o_data[i])
+
+    # for i in range(len(sorted_o_data)-1, -1, -1):
+    #     if sorted_o_data[i, 0] < 0:
+    #         break;
     #     sorted_input.append(sorted_i_data[i])
     #     sorted_output.append(sorted_o_data[i])
 
@@ -138,7 +145,7 @@ def training(
             weight_file
             )
 
-        new_i, new_o = t.dataLoader(
+        new_i, new_o = FileIO.dataLoader(
             file_path + file_name[itr],
             'input',
             'output') # 1000k

@@ -1,7 +1,6 @@
 import sys
 import numpy as np
 import math
-from scipy.io import loadmat
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow.keras.backend as K
@@ -13,6 +12,7 @@ import matplotlib.pyplot as plt
 from module.normalize import Normalize
 from datetime import datetime
 from config import config
+from module.file_io import FileIO
 
 class Train:
     def __init__(self,
@@ -37,7 +37,7 @@ class Train:
             self.model.add(Dense(4, activation = 'tanh'))
 
         else:
-            self.model = self.loadFile(m_file_name, w_file_name)
+            self.model = FileIO.loadfile(self.model_save_dir, m_file_name, w_file_name)
 
         self.predict_func = K.function(
             self.model.input,
@@ -47,15 +47,17 @@ class Train:
             lambda z: K.gradients(z[0][0, :], z[1]))\
                 ([self.model.output, self.model.input])
         self.grad_calc = K.function(self.model.input, self.grad)
+        print("Gradient")
+        print(self.grad)
         
     def train(self, i_data, o_data):
-        print(self.model)
         train_i, train_o, valid_i ,valid_o, test_i, test_o = \
             self.dataSplit(i_data, o_data, 0.7, 0.15, 0.15)
 
         n = Normalize(train_i, train_o)
         train_input, train_output = n.dataNormalize(train_i, train_o)
         valid_input, valid_output = n.dataNormalize(valid_i, valid_o)
+        test_input, test_output = n.dataNormalize(test_i, test_o)
 
         self.compile_model(config["weight"])
         self.model.fit(train_input, train_output,
@@ -64,8 +66,6 @@ class Train:
             batch_size = config["batch"],
             validation_data = (valid_input, valid_output)
             )
-        
-        test_input, test_output = n.dataNormalize(test_i, test_o)
 
         min, max, left_i, right_i = self.evaluation(
             test_input,
@@ -79,7 +79,10 @@ class Train:
             return mse_loss
         
         def grad_loss(y_true, y_pred):
-            grad_normal_loss = w[1] * tf.acos(K.mean(K.sum(K.l2_normalize(self.grad) * y_true[:,1:4], axis=1)))
+            grad_normal_loss = w[1] * K.sum(tf.math.acos(K.sum(tf.math.l2_normalize(self.grad) * y_true[:,1:4], axis = 1)))
+            # grad_normal_loss = - w[1] * K.mean(K.sum(K.l2_normalize(self.grad) * y_true[:,1:4], axis=1))
+            print("y_true")
+            print(y_true)
             return grad_normal_loss
         
         def tot_loss(y_true, y_pred):
@@ -92,23 +95,6 @@ class Train:
             # metrics = [mse_loss]
         )
 
-    def loadFile(self, m_file_name, w_file_name):
-        # load model
-        try:
-            json_file = open(self.model_save_dir + m_file_name, 'r')
-        except:
-            print("json file failed to load, dir: "
-                + self.model_save_dir + m_file_name)
-            sys.exit(-1)
-
-        loaded_model_json = json_file.read()
-        json_file.close()
-        loaded_model = model_from_json(loaded_model_json)
-        # load weight
-        loaded_model.load_weights(self.model_save_dir + w_file_name)
-        print("Loaded model from disk, name: "
-            + self.model_save_dir + m_file_name)
-        return loaded_model
     
     def saveFile(self, m_file_name, w_file_name):
         # serialize model to JSON
@@ -127,10 +113,15 @@ class Train:
         prediction = np.squeeze(self.predict_func(i_data))
         grad_pred = np.squeeze(self.grad_calc(i_data))
 
-        predict_output = n.dataUnnormalize(prediction)
+        predict_output = n.oDataUnnormalize(prediction)
         predict_output = predict_output[:, 0]
-        real_output = n.dataUnnormalize(o_data)
+        real_output = n.oDataUnnormalize(o_data)
         real_output = real_output[:, 0]
+        real_input = n.iDataUnnormalize(i_data)
+        predict_grad = n.gDataUnnormalize(grad_pred)
+
+        FileIO.saveData(self.model_save_dir, "/data.csv", real_input, real_output,
+            predict_output, predict_grad)
 
         sorted_ind = sorted(range(len(real_output)), key = lambda k:real_output[k])
         sorted_prediction = np.array([predict_output[i] for i in sorted_ind])
@@ -193,7 +184,7 @@ class Train:
 
     def loadAndTest(self, file_path):
         filename = '/obj/data/data_final1.mat'
-        i_data, o_data = self.dataLoader(
+        i_data, o_data = FileIO.dataLoader(
             file_path + filename,
             'input',
             'output'
@@ -205,13 +196,6 @@ class Train:
         self.model.compile(loss = 'mean_squared_error', optimizer = 'adam',
             metric = ['accuracy'])
         self.evaluation(test_input, test_output, n)
-
-    
-    def dataLoader(self, filename, input, output):
-        mat_contents = loadmat(filename)
-        i_data = mat_contents[input]
-        o_data = mat_contents[output]
-        return i_data, o_data
 
 
     def dataSplit(self, i_data, o_data, tr = 0.7, va = 0.15, te = 0.15):

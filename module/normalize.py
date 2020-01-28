@@ -19,5 +19,11 @@ class Normalize():
             o_data[:, l] = self.a_o[l] * o_data[:, l] + self.b_o[l]
         return i_data, o_data
 
-    def dataUnnormalize(self, o_data):
+    def oDataUnnormalize(self, o_data):
         return (o_data - self.b_o) / self.a_o
+    
+    def iDataUnnormalize(self, i_data):
+        return (i_data - self.b_i) / self.a_i
+
+    def gDataUnnormalize(self, g_data):
+        return (g_data - self.b_o[1:]) / self.a_o[1:]
