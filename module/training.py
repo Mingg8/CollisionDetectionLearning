@@ -47,8 +47,6 @@ class Train:
             lambda z: K.gradients(z[0][0, :], z[1]))\
                 ([self.model.output, self.model.input])
         self.grad_calc = K.function(self.model.input, self.grad)
-        print("Gradient")
-        print(self.grad)
         
     def train(self, i_data, o_data):
         train_i, train_o, valid_i ,valid_o, test_i, test_o = \
@@ -79,10 +77,8 @@ class Train:
             return mse_loss
         
         def grad_loss(y_true, y_pred):
-            grad_normal_loss = w[1] * K.sum(tf.math.acos(K.sum(tf.math.l2_normalize(self.grad) * y_true[:,1:4], axis = 1)))
-            # grad_normal_loss = - w[1] * K.mean(K.sum(K.l2_normalize(self.grad) * y_true[:,1:4], axis=1))
-            print("y_true")
-            print(y_true)
+            grad_normal_loss = w[1] * K.mean(tf.math.acos(K.sum(
+                tf.math.l2_normalize(self.grad) * y_true[:,1:4], axis = 1)))
             return grad_normal_loss
         
         def tot_loss(y_true, y_pred):
@@ -110,8 +106,8 @@ class Train:
     def evaluation(self, i_data, o_data, n):
         # predict
         # prediction = self.model.predict(i_data)
-        prediction = np.squeeze(self.predict_func(i_data))
-        grad_pred = np.squeeze(self.grad_calc(i_data))
+        prediction = np.squeeze(self.predict_func(i_data)) # normalized
+        grad_pred = np.squeeze(self.grad_calc(i_data)) # normalized
 
         predict_output = n.oDataUnnormalize(prediction)
         predict_output = predict_output[:, 0]
@@ -121,7 +117,7 @@ class Train:
         predict_grad = n.gDataUnnormalize(grad_pred)
 
         FileIO.saveData(self.model_save_dir, "/data.csv", real_input, real_output,
-            predict_output, predict_grad)
+            predict_output, predict_grad, grad_pred)
 
         sorted_ind = sorted(range(len(real_output)), key = lambda k:real_output[k])
         sorted_prediction = np.array([predict_output[i] for i in sorted_ind])
