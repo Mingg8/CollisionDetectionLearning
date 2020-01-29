@@ -4,28 +4,27 @@ import math
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow.keras.backend as K
-from tensorflow.keras.models import Sequential, model_from_json
+from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 
 import matplotlib.pyplot as plt
 
 from module.normalize import Normalize
+from module.data_processing import DataProcessing
 from datetime import datetime
 from config import config
 from module.file_io import FileIO
 
 class Train:
     def __init__(self,
-        model_save_directory,
         save_directory,
         err = 0.002,
         m_file_name = "",
         w_file_name = ""
         ):
         self.error_bound = err
-        self.figure_save_dir = save_directory
-        self.model_save_dir = model_save_directory
-        print("dir: "+self.model_save_dir)
+        self.save_dir = save_directory
+        print("dir: "+self.save_dir)
 
         tf.compat.v1.disable_eager_execution()
 
@@ -42,7 +41,8 @@ class Train:
             self.pos = self.model.input
 
         else:
-            self.model = FileIO.loadfile(self.model_save_dir, m_file_name, w_file_name)
+            self.model = FileIO.loadFile(self.save_dir, m_file_name, w_file_name)
+            self.pos = self.model.input
         
         print(self.model.summary())
 
@@ -56,17 +56,9 @@ class Train:
         self.grad_calc = K.function(self.pos, self.grad)
 
         
-    def train(self, i_data, o_data):
-        sr = config["split_ratio"]
-        train_i, train_o, test_i, test_o = \
-            self.dataSplit(i_data, o_data, sr[0], sr[1])
-
-        n = Normalize(train_i, train_o)
-        train_input, train_output = n.dataNormalize(train_i, train_o)
-        test_input, test_output = n.dataNormalize(test_i, test_o)
-
+    def train(self, data):
         self.compile_model(config["weight"])
-        self.model.fit(train_input, train_output,
+        self.model.fit(data.train_input, data.train_output,
             shuffle = True,
             epochs = config["epoch"],
             batch_size = config["batch"],
@@ -74,9 +66,10 @@ class Train:
             )
 
         min, max, left_i, right_i = self.evaluation(
-            test_input,
-            test_output,
-            n)
+            data.test_input,
+            data.test_output,
+            data.n
+            )
         return min, max, left_i ,right_i
     
     def compile_model(self, w):
@@ -101,12 +94,12 @@ class Train:
     def saveFile(self, m_file_name, w_file_name):
         # serialize model to JSON
         model_json = self.model.to_json()
-        with open(self.model_save_dir + m_file_name, "w") as json_file:
+        with open(self.save_dir + m_file_name, "w") as json_file:
             json_file.write(model_json)
 
         # serialize weights to HDF5
-        self.model.save_weights(self.model_save_dir + w_file_name)
-        print("Save model to disk, name: " + self.model_save_dir
+        self.model.save_weights(self.save_dir + w_file_name)
+        print("Save model to disk, name: " + self.save_dir
             + m_file_name)
 
     def evaluation(self, i_data, o_data, n):
@@ -122,7 +115,7 @@ class Train:
         real_input = n.iDataUnnormalize(i_data)
         predict_grad = n.gDataUnnormalize(grad_pred)
 
-        FileIO.saveData(self.model_save_dir, "/data.csv", real_input, real_output,
+        FileIO.saveData(self.save_dir, "/data.csv", real_input, real_output,
             predict_output, predict_grad, grad_pred)
 
         sorted_ind = sorted(range(len(real_output)), key = lambda k:real_output[k])
@@ -135,9 +128,7 @@ class Train:
 
         x = range(len(sorted_output))
         plt.plot(x, sorted_prediction, 'b', sorted_output, 'r')
-        now = datetime.now()
-        now_string = now.strftime("%_Y-%m-%d_%H:%M")
-        plt.savefig(self.figure_save_dir +'/figure'+now_string+ '.png')
+        plt.savefig(self.save_dir +'/figure.png')
         plt.clf()
         # plt.show()
 
@@ -180,7 +171,7 @@ class Train:
         # plt.xticks(np.arange(0, 0.005, 0.0002))
         plt.rc('axes', labelsize = 4)
         plt.grid()
-        plt.savefig(self.figure_save_dir + '/figure2.png')
+        plt.savefig(self.save_dir + '/figure2.png')
         plt.clf()
         return sorted_output[left_i], sorted_output[right_i], left_i, right_i
 
@@ -198,31 +189,6 @@ class Train:
         self.model.compile(loss = 'mean_squared_error', optimizer = 'adam',
             metric = ['accuracy'])
         self.evaluation(test_input, test_output, n)
-
-
-    def dataSplit(self, i_data, o_data, tr = 0.85, te = 0.15):
-        data = np.append(i_data, o_data, axis = 1)
-
-        train_i = []
-        train_o = []
-        test_i = []
-        test_o = []
-
-        tot_data_num = len(i_data)
-        for i in range(tot_data_num):
-            if i < int(tot_data_num * tr):
-                train_i.append(data[i, 0:3])
-                train_o.append(data[i, 3:])
-            else:
-                test_i.append(data[i, 0:3])
-                test_o.append(data[i, 3:])
-
-        train_i = np.array(train_i)
-        train_o = np.array(train_o)
-        test_i = np.array(test_i)
-        test_o = np.array(test_o)
-
-        return train_i, train_o, test_i, test_o
 
     def FindBatchSize(model):
         """#model: model architecture, that is yet to be trained"""
