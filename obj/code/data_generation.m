@@ -13,6 +13,8 @@ load('obj_data.mat')
 obj_f_v = new_face;
 obj_v = new_pnt;
 obj_vn = new_normal;
+pnt_num = size(obj_v, 1);
+face_num = size(obj_f_v, 1);
 
 %% normal generation
 obj_f_vn = zeros(size(obj_f_v,1),3);
@@ -71,7 +73,20 @@ noise_size2 = 0.005;
 eps = 1e-10;
 data_num = 1000000;
 input = zeros(data_num, 3);
-output = zeros(data_num, 1);
+% output = zeros(data_num, 1);
+output = zeros(data_num, 4);
+
+%% for broad phase
+% r = [];
+% for i = 1:size(obj_v,1)
+%     if obj_v(i,3) <= 0.035 && obj_v(i,3) >= 0.025
+%         r_temp = norm(obj_v(i,1:2));
+%         r = [r;r_temp];
+%     end
+% end
+% figure(2)
+% plot(r,'.')
+
 
 %% for check
 clc;
@@ -84,33 +99,31 @@ minus_penet = zeros(data_num,1);
 near_penet = zeros(data_num,1);
 
 % %% point generation
-z_range = [0.02, 0.042];
-r_range = [0.018, 0.026];
-z_range2 = [0.038, 0.042];
-r_range2 = [0, 0.018];
+% z_range = [0.02, 0.05];
+% r_range = [0.0, 0.04];
+% z_range2 = [0.03, 0.05];
+% r_range2 = [0, 0.02];
+z_range = [0.02, 0.0401];
+r_range = [0.0209, 0.0239];
+z_range2 = [0.0399, 0.0401];
+r_range2 = [0, 0.0239];
+fraction = (z_range2(2)-z_range2(1))/(z_range(2)-z_range(1)) * ...
+    (r_range2(2)-r_range2(1))/(r_range(2)-r_range(1))*0.5;
 tic
 parfor i_tmp = 1:data_num
-    pnt_num = size(obj_v, 1);
-    face_num = size(obj_f_v, 1);
-    
+    normal = [0 0 1];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%55    
-    fraction = (z_range2(2)-z_range2(1))/(z_range(2)-z_range(1)) * ...
-        (r_range2(2)-r_range2(1))/(r_range(2)-r_range(1));
     if i_tmp < floor(data_num*fraction)
-        u = 0.018* (rand(1) + rand(1));
-        if u > 0.018
-            r = 2 * 0.018 - u;
-        else
-            r = u;
-        end
         theta = 2 * pi * rand(1);
-        z = z_range(1) + (z_range(2) - z_range(1)) * rand(1);
-        pnt = [r * cos(theta), r * sin(theta), z];
+        radius = r_range2(1) + (r_range2(2) - r_range2(1)) * rand(1);
+        pnt = [radius * cos(theta), ...
+             radius * sin(theta), ...
+            z_range2(1) + (z_range2(2) - z_range2(1)) * rand(1)];
     else
         theta = rand(1) * 2 * pi;
         radius = r_range(1) + (r_range(2) - r_range(1)) * rand(1);
 
-        pnt = [radius * cos(theta) ...
+        pnt = [radius * cos(theta), ...
              radius * sin(theta), ...
             z_range(1) + (z_range(2) - z_range(1)) * rand(1)];
     end
@@ -198,11 +211,12 @@ parfor i_tmp = 1:data_num
     if min_geo == 0
         normal1 = obj_f_vn(min_idx_same(1),:);
         penet_temp = dot(normal1(1:2),pnt(1:2)-min_pnt(1:2));
-        if pnt(3) <= 0.039 && pnt(3) >= 0.021
+        if pnt(3) <= 0.0395 && pnt(3) >= 0.0205
             if sign(penet_temp) ~= sign(penet)
                 penet = penet_temp
             end
         end
+        normal = normal1;
     end
     
     if min_geo == 1
@@ -249,7 +263,8 @@ parfor i_tmp = 1:data_num
         normal = obj_f_vn(min_idx_same(I_final),:);
         penet = dot(normal, pnt - min_pnt); % plus: outside, minus: inside
     end
-    output(i_tmp) = penet;
+%     output(i_tmp) = penet;
+    output(i_tmp,:) = [penet normal];
 
     if (penet > 0)
         plus_pnts(i_tmp,:) = pnt;
@@ -279,6 +294,8 @@ num_plus = size(plus_pnts,1)
 num_minus = size(minus_pnts,1)
 % num_near = size(near_pnts,1)
 
+% save('data_final.mat','input','output');
+save('data_final_include_normal.mat','input','output');
 
 %% data check
 close all
@@ -297,48 +314,4 @@ ylabel('y')
 
 hold off;
 
-%%
-N_data = 1000000;
-input_data = input(1:N_data,:).';
-output_data = output(1:N_data,:).';
-% M_input = max(input);
-% m_input = min(input);
-% M_output = max(output);
-% m_output = min(output);
-% for i = 1:N_data
-%     input_data(:,i) = ((input(i,:) - m_input)./(M_input - m_input)).';
-%     output_data(:,i) = ((output(i,:) - m_output)./(M_output - m_output)).';
-% end
 
-%% training
-net = feedforwardnet([50 50 50 50]);
-net.trainFcn = 'trainscg';
-net.divideParam.trainRatio = 70/100;
-net.divideParam.valRatio   = 15/100;
-net.divideParam.testRatio  = 15/100;
-net.trainParam.epochs = 10000;
-net.trainParam.min_grad = 1e-15;
-net.trainParam.max_fail = 500;
-net.inputs{1}.processFcns = { 'removeconstantrows', 'mapminmax' };
-net.outputs{2}.processFcns =  { 'removeconstantrows', 'mapminmax' };
-net.performParam.normalization = 'standard';
-net.performParam.regularization = 0.1;
-net.performFcn = 'mse';
-
-% [net, tr] = train(net,input.',output.','useParallel','yes','showResources','yes');
-[net, tr] = train(net,input_data,output_data,'useGPU','yes','showResources','yes');
-
-%% test
-tic
-output_net = net(input_data);
-toc
-[~,index] = sort(output_data);
-
-% output_net_sort = output_net(index).*(M_output - m_output) + m_output;
-% output_true_sort = output_data(index).*(M_output - m_output) + m_output;
-output_net_sort = output_net(index);
-output_true_sort = output_data(index);
-
-plot(output_net_sort,'.','color','r')
-hold on
-plot(output_true_sort,'.','color','k')
