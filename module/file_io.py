@@ -28,8 +28,6 @@ class FileIO:
 
     def saveData(model_save_dir, file_name, real_i, real_o,
         pred_o, pred_g, pred_g2):
-        print(np.shape(real_i))
-        print(np.shape(real_o))
         length = np.shape(real_i)[0]
         real_o = np.reshape(real_o, (length, 1))
         pred_o = np.reshape(pred_o, (length, 1))

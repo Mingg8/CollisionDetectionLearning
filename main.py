@@ -135,7 +135,7 @@ def training(
     #     )
 
 
-    # iteration with different data set
+    # iteration with different data sets
     for itr in range(1, len(file_name)):
         t = Train(
             model_save_directory,

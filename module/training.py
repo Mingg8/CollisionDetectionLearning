@@ -29,26 +29,17 @@ class Train:
 
         tf.compat.v1.disable_eager_execution()
 
+        hdim = config["hdim"]
+
         if (m_file_name == "" and w_file_name == ""):
             self.model = Sequential()
             # training
-            self.model.add(Dense(256, input_dim = 3, activation = 'relu'))
-            self.model.add(Dense(256, activation = 'relu'))
-            self.model.add(Dense(256, activation = 'relu'))
+            self.model.add(Dense(hdim, input_dim = 3, activation = 'relu'))
+            self.model.add(Dense(hdim, activation = 'relu'))
+            self.model.add(Dense(hdim, activation = 'relu'))
             self.model.add(Dense(4, activation = 'tanh'))
 
             self.pos = self.model.input
-
-            # model_input = keras.layers.Input(shape = (3, ))
-            # self.pos = model_input
-            # hlayer1 = keras.layers.Dense(256, activation = tf.nn.relu)
-            # hlayer2 = keras.layers.Dense(256, activation = tf.nn.relu)
-            # hlayer3 = keras.layers.Dense(256, activation = tf.nn.relu)
-            # dropout = keras.layers.Dropout(0.25)
-            # fclayer = keras.layers.Dense(1, activation = tf.nn.tanh)
-
-            # self.Cq = fclayer(dropout(hlayer3(hlayer2(hlayer1(self.pos)))))
-            # self.model = keras.models.Model(inputs = model_input, outputs = self.Cq)
 
         else:
             self.model = FileIO.loadfile(self.model_save_dir, m_file_name, w_file_name)
@@ -64,35 +55,14 @@ class Train:
                 ([self.model.output, self.pos])
         self.grad_calc = K.function(self.pos, self.grad)
 
-        # self.x = tf.placeholder(tf.float32, [None, 3])
-        # self.y = tf.placeholder(tf.float32, [None, 4])
-
-        # W1 = tf.Variable(tf.random_normal([3, 256], stddev= 0.3), name = 'W1')
-        # b1 = tf.Variable(tf.random_normal([256]), name = 'b1')
-        # W2 = tf.Variable(tf.random_normal([256, 256], stddev = 0.3), name = 'W2')
-        # b2 = tf.Variable(tf.random_normal([256], stddev = 0.3), name = 'b2')
-        # W3 = tf.Variable(tf.random_normal([256, 256], stddev = 0.3), name = 'W3')
-        # b3 = tf.Variable(tf.random_normal([256], stddev = 0.3), name = 'b3')
-        # W4 = tf.Variable(tf.random_normal([256, 4], stddev = 0.3), name = 'W4')
-        # b4 = tf.Variable(tf.random_normal([256], stddev = 0.3), name = 'b4')
-
-        # hidden_out1 = tf.add(tf.matmul(x, W1), b1)
-        # hidden_out1 = tf.nn.relu(hidden_out1)
-        # hidden_out2 = tf.add(tf.matmul(hidden_out1, W2), b2)
-        # hidden_out2 = tf.nn.relu(hidden_out2)
-        # hidden_out3 = tf.add(tf.matmul(hidden_out3, W3), b3)
-        # hidden_out3 = tf.nn.relu(hidden_out3)
-        # hidden_out4 = tf.add(tf.matmul(hidden_out4, W4), b4)
-        # self.y_ = tf.nn.tanh(hidden_out4)
-
         
     def train(self, i_data, o_data):
-        train_i, train_o, valid_i ,valid_o, test_i, test_o = \
-            self.dataSplit(i_data, o_data, 0.7, 0.15, 0.15)
+        sr = config["split_ratio"]
+        train_i, train_o, test_i, test_o = \
+            self.dataSplit(i_data, o_data, sr[0], sr[1])
 
         n = Normalize(train_i, train_o)
         train_input, train_output = n.dataNormalize(train_i, train_o)
-        valid_input, valid_output = n.dataNormalize(valid_i, valid_o)
         test_input, test_output = n.dataNormalize(test_i, test_o)
 
         self.compile_model(config["weight"])
@@ -100,33 +70,8 @@ class Train:
             shuffle = True,
             epochs = config["epoch"],
             batch_size = config["batch"],
-            validation_data = (valid_input, valid_output)
+            validation_split = 0.2
             )
-
-        # init_op = tf.initialize_all_variables()
-        
-        # sess = tf.Session()
-        # sess.run(init_op)
-
-        # cost = 0
-        # diff = 1
-
-        # epoch_values = []
-
-        # for i in range(config["epoch"]):
-        #     if i > 1 and diff < .0001:
-        #         print("change in cost %g; convergence. " %diff)
-        #         break
-        #     else:
-        #         step = sess.run(self.optimiser, feed_dict = {self.x: trainX, self.y: trainY})
-        #         if i % 10 == 0:
-        #             epoch_values.append(i)
-        #             summary_results, train_accuracy, newCost = sess.run(
-        #                 [self.optimiser, self.cost],
-        #                 feed_dict = {self.x: trainX, self.y: trainY}
-        #             )
-        #             diff = abs(newCost - cost)
-        #             cost = newCost
 
         min, max, left_i, right_i = self.evaluation(
             test_input,
@@ -151,13 +96,7 @@ class Train:
             loss = tot_loss,
             optimizer = 'adam',
             metrics = [mse_loss, grad_loss]
-            # metrics = [mse_loss]
         )
-
-        # self.cost = config["weight"][0] & tf.nn.l2_loss(self.y[:, 0] - self.y_[:, 0],
-        #                                         name = "squared_error_cost")
-        # self.optimiser = tf.train.AdamOptimizer(learning_rate = 0.5).minimize(self.cost)
-
     
     def saveFile(self, m_file_name, w_file_name):
         # serialize model to JSON
@@ -172,8 +111,6 @@ class Train:
 
     def evaluation(self, i_data, o_data, n):
         # predict
-        # prediction = self.model.predict(np.transpose(i_data))
-        a = self.predict_func(i_data)
         prediction = np.squeeze(self.predict_func(i_data)) # normalized
         grad_pred = np.squeeze(self.grad_calc(i_data)) # normalized
 
@@ -254,7 +191,7 @@ class Train:
             'input',
             'output'
             )
-        _, _, _, _, test_i, test_o = self.dataSplit(i_data, o_data)
+        _, _, test_i, test_o = self.dataSplit(i_data, o_data)
         n = Normalize(test_i, test_o)
         test_input, test_output = n.dataNormalize(test_i, test_o)
         
@@ -263,32 +200,29 @@ class Train:
         self.evaluation(test_input, test_output, n)
 
 
-    def dataSplit(self, i_data, o_data, tr = 0.7, va = 0.15, te = 0.15):
+    def dataSplit(self, i_data, o_data, tr = 0.85, te = 0.15):
+        data = np.append(i_data, o_data, axis = 1)
+
         train_i = []
         train_o = []
         test_i = []
         test_o = []
-        valid_i = []
-        valid_o = []
 
-        for i in range(len(o_data)):
-            if i % 100 < int(tr * 100) :
-                train_i.append(i_data[i, :])
-                train_o.append(o_data[i, :])
-            elif i % 100 < int((tr + va) * 100):
-                valid_i.append(i_data[i, :])
-                valid_o.append(o_data[i, :])
-            else :
-                test_i.append(i_data[i, :])
-                test_o.append(o_data[i, :])
+        tot_data_num = len(i_data)
+        for i in range(tot_data_num):
+            if i < int(tot_data_num * tr):
+                train_i.append(data[i, 0:3])
+                train_o.append(data[i, 3:])
+            else:
+                test_i.append(data[i, 0:3])
+                test_o.append(data[i, 3:])
 
         train_i = np.array(train_i)
         train_o = np.array(train_o)
         test_i = np.array(test_i)
         test_o = np.array(test_o)
-        valid_i = np.array(valid_i)
-        valid_o = np.array(valid_o)
-        return train_i, train_o, valid_i, valid_o, test_i, test_o
+
+        return train_i, train_o, test_i, test_o
 
     def FindBatchSize(model):
         """#model: model architecture, that is yet to be trained"""
