@@ -126,9 +126,12 @@ class Train:
         
         print("max error: %.10f" %(np.max(error)))
 
+        now = datetime.now()
+        now_string = now.strftime("%Y-%m-%d_%H:%M")
+
         x = range(len(sorted_output))
         plt.plot(x, sorted_prediction, 'b', sorted_output, 'r')
-        plt.savefig(self.save_dir +'/figure.png')
+        plt.savefig(self.save_dir +'/figure_'+now_string+'.png')
         plt.clf()
         # plt.show()
 
@@ -171,9 +174,14 @@ class Train:
         # plt.xticks(np.arange(0, 0.005, 0.0002))
         plt.rc('axes', labelsize = 4)
         plt.grid()
-        plt.savefig(self.save_dir + '/figure2.png')
+        plt.savefig(self.save_dir + '/figure2_'+ now_string+'.png')
         plt.clf()
         return sorted_output[left_i], sorted_output[right_i], left_i, right_i
+    
+    def saveWeightAsCsv(self):
+        for i in range(8):
+            np.savetxt(self.save_dir + '/weight'+str(i)+'.csv',\
+                self.model.get_weights()[i], fmt='%s', delimiter=',')
 
     def loadAndTest(self, file_path):
         filename = '/obj/data/data_final1.mat'
@@ -188,6 +196,7 @@ class Train:
         
         self.model.compile(loss = 'mean_squared_error', optimizer = 'adam',
             metric = ['accuracy'])
+        self.saveWeightAsCsv()
         self.evaluation(test_input, test_output, n)
 
     def FindBatchSize(model):
