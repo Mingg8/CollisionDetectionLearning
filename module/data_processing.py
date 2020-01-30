@@ -9,9 +9,9 @@ class DataProcessing:
         # ob = config["output_bound"]
         # i_data, o_data = self.preprocessing(i_data, o_data, ob)
 
-        sr = config["split_ratio"]
+        sr = config["trainset_ratio"]
         train_i, train_o, test_i, test_o = \
-            self.dataSplit(i_data, o_data, sr[0], sr[1])
+            self.dataSplit(i_data, o_data, sr)
         
         self.n = Normalize(train_i, train_o, save_dir)
         self.train_input, self.train_output = \
@@ -19,7 +19,7 @@ class DataProcessing:
         self.test_input, self.test_output = \
             self.n.dataNormalize(test_i, test_o)
         
-    def dataSplit(self, i_data, o_data, tr = 0.85, te = 0.15):
+    def dataSplit(self, i_data, o_data, tr = 0.85):
         data = np.append(i_data, o_data, axis = 1)
 
         train_i = []

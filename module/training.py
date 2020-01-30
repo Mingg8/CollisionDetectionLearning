@@ -29,19 +29,21 @@ class Train:
         tf.compat.v1.disable_eager_execution()
 
         hdim = config["hdim"]
+        lnum = config["layer_num"]
 
         if (m_file_name == "" and w_file_name == ""):
             self.model = Sequential()
             # training
             self.model.add(Dense(hdim, input_dim = 3, activation = 'relu'))
-            self.model.add(Dense(hdim, activation = 'relu'))
-            self.model.add(Dense(hdim, activation = 'relu'))
+            for i in range(lnum):
+                self.model.add(Dense(hdim, activation = 'relu'))
             self.model.add(Dense(4, activation = 'tanh'))
 
             self.pos = self.model.input
 
         else:
-            self.model = FileIO.loadFile(self.save_dir, m_file_name, w_file_name)
+            self.model = FileIO.loadFile(self.save_dir, m_file_name,
+                w_file_name)
             self.pos = self.model.input
         
         print(self.model.summary())
@@ -58,19 +60,15 @@ class Train:
         
     def train(self, data):
         self.compile_model(config["weight"])
+        vr = config["validset_ratio"]
         self.model.fit(data.train_input, data.train_output,
             shuffle = True,
             epochs = config["epoch"],
             batch_size = config["batch"],
-            validation_split = 0.2
+            validation_split = vr
             )
 
-        min, max, left_i, right_i = self.evaluation(
-            data.test_input,
-            data.test_output,
-            data.n
-            )
-        return min, max, left_i ,right_i
+        self.evaluation(data)
     
     def compile_model(self, w):
         def mse_loss(y_true, y_pred):
@@ -102,7 +100,10 @@ class Train:
         print("Save model to disk, name: " + self.save_dir
             + m_file_name)
 
-    def evaluation(self, i_data, o_data, n):
+    def evaluation(self, data):
+        i_data = data.test_input
+        o_data = data.test_output
+        n = data.n
         # predict
         prediction = np.squeeze(self.predict_func(i_data)) # normalized
         grad_pred = np.squeeze(self.grad_calc(i_data)) # normalized
@@ -110,17 +111,21 @@ class Train:
         predict_output = n.oDataUnnormalize(prediction)
         real_output = n.oDataUnnormalize(o_data)
         predict_output = predict_output[:, 0]
-        real_output = real_output[:, 0]
 
         real_input = n.iDataUnnormalize(i_data)
         predict_grad = n.gDataUnnormalize(grad_pred)
 
-        FileIO.saveData(self.save_dir, "/data.csv", real_input, real_output,
-            predict_output, predict_grad, grad_pred)
+        now = datetime.now()
+        now_string = now.strftime("%Y-%m-%d_%H:%M")
 
-        sorted_ind = sorted(range(len(real_output)), key = lambda k:real_output[k])
+        FileIO.saveData(self.save_dir, "/data_"+now_string+".csv",
+            real_input, real_output, predict_output, predict_grad,
+            grad_pred)
+
+        sorted_ind = sorted(range(len(real_output)),
+            key = lambda k:real_output[k][0])
         sorted_prediction = np.array([predict_output[i] for i in sorted_ind])
-        sorted_output = np.array([real_output[i] for i in sorted_ind])
+        sorted_output = np.array([real_output[i][0] for i in sorted_ind])
 
         error = abs(sorted_prediction - sorted_output)
         
@@ -134,49 +139,6 @@ class Train:
         plt.savefig(self.save_dir +'/figure_'+now_string+'.png')
         plt.clf()
         # plt.show()
-
-        for idx in range(len(sorted_output)):
-            if sorted_output[idx] > -0.004:
-                break
-        left_i = 0
-        for i in range(idx, -1, -1):
-            if error[i] > self.error_bound:
-                left_i = i
-                break
-        print("left i: %d" %left_i)
-        right_i = len(sorted_output) - 1
-        for j in range(idx, len(sorted_output)):
-            if error[j] > self.error_bound:
-                right_i = j
-                break
-        print("right i: %d" %right_i)
-        print("bound: {} ~ {}".format(sorted_output[left_i], sorted_output[right_i]))
-
-        right = np.zeros(100).astype(float)
-        wrong= np.zeros(100).astype(float)
-        for i in range(idx, len(sorted_output)):
-            if sorted_output[i] > 0.005:
-                break
-            if sorted_output[i] >= 0:
-                section = int(sorted_output[i] * 20000)
-                if sorted_prediction[i] > 0:
-                    right[section] += 1
-                else:
-                    wrong[section] += 1
-        accuracy = np.zeros(100)
-        for i in range(100):
-            if (wrong[i] + right[i] > 0):
-                accuracy[i] = (right[i] / (wrong[i] + right[i]))
-            else:
-                accuracy[i] = 0
-        X = np.arange(0, 0.005, 0.005 / 100)
-        plt.plot(X, accuracy)
-        # plt.xticks(np.arange(0, 0.005, 0.0002))
-        plt.rc('axes', labelsize = 4)
-        plt.grid()
-        plt.savefig(self.save_dir + '/figure2_'+ now_string+'.png')
-        plt.clf()
-        return sorted_output[left_i], sorted_output[right_i], left_i, right_i
     
     def saveWeightAsCsv(self):
         for i in range(8):
@@ -184,20 +146,19 @@ class Train:
                 self.model.get_weights()[i], fmt='%s', delimiter=',')
 
     def loadAndTest(self, file_path):
-        filename = '/obj/data/data_final1.mat'
+        filename = config["file_name"][-1]
         i_data, o_data = FileIO.dataLoader(
             file_path + filename,
             'input',
             'output'
             )
-        _, _, test_i, test_o = self.dataSplit(i_data, o_data)
-        n = Normalize(test_i, test_o)
-        test_input, test_output = n.dataNormalize(test_i, test_o)
-        
-        self.model.compile(loss = 'mean_squared_error', optimizer = 'adam',
-            metric = ['accuracy'])
-        self.saveWeightAsCsv()
-        self.evaluation(test_input, test_output, n)
+
+        data_num = config["data_num"]
+        w = config["weight"]
+        data = DataProcessing(i_data, o_data, data_num, file_path)
+        self.compile_model(w)
+
+        self.evaluation(data)
 
     def FindBatchSize(model):
         """#model: model architecture, that is yet to be trained"""

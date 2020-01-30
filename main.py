@@ -70,11 +70,13 @@ def training(
         np.shape(data.train_output)))
 
     # 3. train
-    a, b, left_i, right_i = t.train(
-        data
-        )
-    model_file = "/model0.json"
-    weight_file = "/weight0.h5"
+    t.train(data)
+
+    now = datetime.now()
+    now_string = now.strftime("_%Y-%m-%d_%H:%M")
+
+    model_file = "/model" + now_string + ".json"
+    weight_file = "/weight" + now_string +".h5"
     t.saveFile(
         model_file,
         weight_file
@@ -95,9 +97,7 @@ def training(
             'input',
             'output') # 1000k
             
-        a, b, left_i, right_i = t.train(
-            data
-            )
+        t.train(data)
         
         model_file = "/model"+str(itr) +".json"
         weight_file = "/weight"+str(itr)+".h5"
@@ -118,11 +118,6 @@ if __name__ == "__main__":
         print("already exists")
 
     ############ TRAINING
-    try:
-        os.makedirs(save_directory)
-    except:
-        print("already exists")
-
     data_num = config["data_num"]
     file_name = config["file_name"]
     error_bound = config["error_bound"]
@@ -136,11 +131,10 @@ if __name__ == "__main__":
 
     # loadModelAndSaveScv()
 
-    # load and test
     # training(error_bound,
     #   file_path,
-    #   save_directory,
+    #   file_path + '/old_results/2020-01-29_20:02_hdim_64',
     #   file_name,
     #   data_num,
-    #   m_file_name,
-    #   w_file_name)
+    #   '/model3.json',
+    #   '/weight3.h5')

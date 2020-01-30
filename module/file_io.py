@@ -30,7 +30,7 @@ class FileIO:
     def saveData(model_save_dir, file_name, real_i, real_o,
         pred_o, pred_g, pred_g2):
         length = np.shape(real_i)[0]
-        real_o = np.reshape(real_o, (length, 1))
+        real_o = np.reshape(real_o, (length, 4))
         pred_o = np.reshape(pred_o, (length, 1))
 
         mat = np.append(real_i, real_o, axis = 1)
@@ -38,4 +38,4 @@ class FileIO:
         mat = np.append(mat, pred_g, axis = 1)
         mat = np.append(mat, pred_g2, axis = 1)
         np.savetxt(model_save_dir + file_name, mat)
-        
+
