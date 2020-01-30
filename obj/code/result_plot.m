@@ -2,11 +2,12 @@
 clear
 
 load('data.csv')
-input = data(:, 1:3);
-output = data(:, 4);
-pred_o = data(:, 5);
-pred_g = data(:, 6:8);
-pred_g2 = data(:, 9:11);
+data_num = 10000;
+input = data(1:data_num, 1:3);
+output = data(1:data_num, 4);
+pred_o = data(1:data_num, 5);
+pred_g = data(1:data_num, 6:8);
+pred_g2 = data(1:data_num, 9:11);
 
 load('~/workspace/NutLearning/obj/data/obj_data.mat')
 
