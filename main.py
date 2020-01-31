@@ -22,21 +22,14 @@ def loadModelAndTest(m_file, w_file):
     t.loadAndTest(file_path)
 
 
-def loadModelAndSaveCsv():
-    save_dir = '/home/mjlee/workspace/NutLearning/old_results/2020-01-29_20:02'
-    model_file_name = '/model3.json'
-    weight_file_name = '/weight3.h5'
-
+def loadModelAndSaveCsv(save_dir, model_file_name, weight_file_name):
     t = Train(
         save_dir,
         0.03,
         model_file_name,
         weight_file_name
     )
-
-    for i in range(8):
-        np.savetxt('weight'+str(i)+'.csv',\
-            t.model.get_weights()[i], fmt='%s', delimiter=',')
+    t.saveWeightAsCsv()
 
 def training(
     error_bound,
@@ -108,28 +101,31 @@ def training(
         del t
 
 if __name__ == "__main__":
-    file_path = str(os.getcwd())
-    now = datetime.now()
-    now_string = now.strftime("%Y-%m-%d_%H:%M")
-    save_directory = file_path + '/old_results/' + now_string
-    try:
-        os.makedirs(save_directory)
-    except:
-        print("already exists")
+    # file_path = str(os.getcwd())
+    # now = datetime.now()
+    # now_string = now.strftime("%Y-%m-%d_%H:%M")
+    # save_directory = file_path + '/old_results/' + now_string
+    # try:
+    #     os.makedirs(save_directory)
+    # except:
+    #     print("already exists")
 
-    ############ TRAINING
-    data_num = config["data_num"]
-    file_name = config["file_name"]
-    error_bound = config["error_bound"]
-    training(
-        error_bound,
-        file_path,
-        save_directory,
-        file_name,
-        data_num
-        )
+    # ############ TRAINING
+    # data_num = config["data_num"]
+    # file_name = config["file_name"]
+    # error_bound = config["error_bound"]
+    # training(
+    #     error_bound,
+    #     file_path,
+    #     save_directory,
+    #     file_name,
+    #     data_num
+    #     )
 
-    # loadModelAndSaveScv()
+    save_dir = '/home/mjlee/workspace/NutLearning/old_results/2020-01-29_20:02_hdim_64'
+    model_file_name = '/model3.json'
+    weight_file_name = '/weight3.h5'
+    loadModelAndSaveCsv(save_dir, model_file_name, weight_file_name)
 
     # training(error_bound,
     #   file_path,

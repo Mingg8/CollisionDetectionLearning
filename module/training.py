@@ -1,3 +1,4 @@
+import os
 import sys
 import numpy as np
 import math
@@ -118,9 +119,9 @@ class Train:
         now = datetime.now()
         now_string = now.strftime("%Y-%m-%d_%H:%M")
 
-        FileIO.saveData(self.save_dir, "/data_"+now_string+".csv",
-            real_input, real_output, predict_output, predict_grad,
-            grad_pred)
+        # FileIO.saveData(self.save_dir, "/data_"+now_string+".csv",
+        #     real_input, real_output, predict_output, predict_grad,
+        #     grad_pred)
 
         sorted_ind = sorted(range(len(real_output)),
             key = lambda k:real_output[k][0])
@@ -139,10 +140,19 @@ class Train:
         plt.savefig(self.save_dir +'/figure_'+now_string+'.png')
         plt.clf()
         # plt.show()
+
+        self.saveWeightAsCsv()
     
     def saveWeightAsCsv(self):
-        for i in range(8):
-            np.savetxt(self.save_dir + '/weight'+str(i)+'.csv',\
+        lnum = config["layer_num"]
+        directory = self.save_dir + '/weight_csv'
+        try:
+            os.makedirs(directory)
+        except:
+            print("already exists")
+
+        for i in range(2*(lnum+2)):
+            np.savetxt(directory + '/weight'+str(i)+'.csv',\
                 self.model.get_weights()[i], fmt='%s', delimiter=',')
 
     def loadAndTest(self, file_path):
