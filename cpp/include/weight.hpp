@@ -2,7 +2,9 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <string>
 #include <math.h>
+#include "utils.hpp"
 
 using namespace std;
 using namespace Eigen;
@@ -21,12 +23,12 @@ class Weight {
     VectorXd input_coeff;
     VectorXd output_coeff;
 
-    MatrixXd readCsv(std::string file, int rows, int cols);
-    VectorXd readCsv_vec(std::string file, int rows);
     void loadWeight();
     void loadNormalizationCoeff();
     void normalize(MatrixXd &mat);
     void unnormalize(MatrixXd &mat);
     MatrixXd relu(MatrixXd);
     MatrixXd tanh_mat(MatrixXd);
+    MatrixXd tanh_diff(MatrixXd mat);
+    MatrixXd relu_diff(MatrixXd mat);
 };
