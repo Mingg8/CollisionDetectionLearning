@@ -21,6 +21,7 @@ class DataProcessing:
         
     def dataSplit(self, i_data, o_data, tr = 0.85):
         data = np.append(i_data, o_data, axis = 1)
+        np.random.shuffle(data)
 
         train_i = []
         train_o = []
@@ -29,11 +30,11 @@ class DataProcessing:
 
         for i in range(self.data_num):
             if i < int(self.data_num * tr):
-                train_i.append(data[i, 0:3])
-                train_o.append(data[i, 3:])
+                train_i.append(data[i, 0:config['input_num']])
+                train_o.append(data[i, config['input_num']:])
             else:
-                test_i.append(data[i, 0:3])
-                test_o.append(data[i, 3:])
+                test_i.append(data[i, 0:config['input_num']])
+                test_o.append(data[i, config['input_num']:])
 
         train_i = np.array(train_i)
         train_o = np.array(train_o)

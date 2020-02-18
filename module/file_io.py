@@ -22,6 +22,7 @@ class FileIO:
         loaded_model_json = json_file.read()
         json_file.close()
         loaded_model = model_from_json(loaded_model_json)
+        
         # load weight
         loaded_model.load_weights(model_save_dir + w_file_name)
         print("Loaded model from disk, name: "
@@ -31,7 +32,7 @@ class FileIO:
     def saveData(model_save_dir, file_name, real_i, real_o,
         pred_o, pred_g, pred_g2):
         length = np.shape(real_i)[0]
-        real_o = np.reshape(real_o, (length, 4))
+        real_o = np.reshape(real_o, (length, config['output_num']))
         pred_o = np.reshape(pred_o, (length, 1))
 
         mat = np.append(real_i, real_o, axis = 1)
@@ -39,4 +40,3 @@ class FileIO:
         mat = np.append(mat, pred_g, axis = 1)
         mat = np.append(mat, pred_g2, axis = 1)
         np.savetxt(model_save_dir + file_name, mat)
-

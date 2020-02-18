@@ -1,4 +1,5 @@
 import numpy as np
+from config import config
 
 class Normalize():
     def __init__(self, i_data, o_data, save_dir):
@@ -15,9 +16,9 @@ class Normalize():
         self.saveCoeffs(save_dir)
 
     def dataNormalize(self, i_data, o_data):
-        for l in range(3):
+        for l in range(config['input_num']):
             i_data[:, l] = self.a_i[l] * i_data[:, l] + self.b_i[l]
-        for l in range(4):
+        for l in range(config['output_num']):
             o_data[:, l] = self.a_o[l] * o_data[:, l] + self.b_o[l]
         return i_data, o_data
 

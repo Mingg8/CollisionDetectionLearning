@@ -19,10 +19,12 @@ from module.file_io import FileIO
 class Train:
     def __init__(self,
         save_directory,
+        gradient_learning,
         err = 0.002,
         m_file_name = "",
         w_file_name = ""
         ):
+        self.grad_learning = gradient_learning
         self.error_bound = err
         self.save_dir = save_directory
         print("dir: "+self.save_dir)
@@ -35,10 +37,10 @@ class Train:
         if (m_file_name == "" and w_file_name == ""):
             self.model = Sequential()
             # training
-            self.model.add(Dense(hdim, input_dim = 3, activation = 'relu'))
+            self.model.add(Dense(hdim, input_dim = config['input_num'], activation = 'relu'))
             for i in range(lnum):
                 self.model.add(Dense(hdim, activation = 'relu'))
-            self.model.add(Dense(4, activation = 'tanh'))
+            self.model.add(Dense(config['output_num'], activation = 'tanh'))
 
             self.pos = self.model.input
 
@@ -53,10 +55,11 @@ class Train:
             self.pos,
             self.model.output)
 
-        self.grad = keras.layers.Lambda(
-            lambda z: K.gradients(z[0][:, 0], z[1]))\
-                ([self.model.output, self.pos])
-        self.grad_calc = K.function(self.pos, self.grad)
+        if self.grad_learning:
+            self.grad = keras.layers.Lambda(
+                lambda z: K.gradients(z[0][:, 0], z[1]))\
+                    ([self.model.output, self.pos])
+            self.grad_calc = K.function(self.pos, self.grad)
 
         
     def train(self, data):
@@ -76,19 +79,26 @@ class Train:
             mse_loss = w[0] * K.mean(K.square(y_true[:,0]-y_pred[:,0]))
             return mse_loss
         
-        def grad_loss(y_true, y_pred):
-            grad_normal_loss = w[1] * K.mean(tf.math.acos(K.sum(
-                tf.math.l2_normalize(self.grad) * y_true[:,1:4], axis = 0)))
-            return grad_normal_loss
-        
-        def tot_loss(y_true, y_pred):
-            return mse_loss(y_true, y_pred) + grad_loss(y_true, y_pred)
+        if self.grad_learning:
+            def grad_loss(y_true, y_pred):
+                grad_normal_loss = w[1] * K.mean(tf.math.acos(K.sum(
+                    tf.math.l2_normalize(self.grad) * y_true[:,1:4], axis = 0)))
+                return grad_normal_loss
+            
+            def tot_loss(y_true, y_pred):
+                return mse_loss(y_true, y_pred) + grad_loss(y_true, y_pred)
 
-        self.model.compile(
-            loss = tot_loss,
-            optimizer = 'adam',
-            metrics = [mse_loss, grad_loss]
-        )
+            self.model.compile(
+                loss = tot_loss,
+                optimizer = 'adam',
+                metrics = [mse_loss, grad_loss]
+            )
+        else:
+            self.model.compile(
+                loss = mse_loss,
+                optimizer = 'adam'
+            )
+
     
     def saveFile(self, m_file_name, w_file_name):
         # serialize model to JSON
@@ -106,15 +116,17 @@ class Train:
         o_data = data.test_output
         n = data.n
         # predict
-        prediction = np.squeeze(self.predict_func(i_data)) # normalized
-        grad_pred = np.squeeze(self.grad_calc(i_data)) # normalized
+        prediction = self.predict_func(i_data) # normalized
 
         predict_output = n.oDataUnnormalize(prediction)
         real_output = n.oDataUnnormalize(o_data)
         predict_output = predict_output[:, 0]
 
         real_input = n.iDataUnnormalize(i_data)
-        predict_grad = n.gDataUnnormalize(grad_pred)
+
+        if self.grad_learning:
+            grad_pred = np.squeeze(self.grad_calc(i_data)) # normalized
+            predict_grad = n.gDataUnnormalize(grad_pred)
 
         now = datetime.now()
         now_string = now.strftime("%Y-%m-%d_%H:%M")
