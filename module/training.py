@@ -174,8 +174,11 @@ class Train:
             'input',
             'output'
             )
-
+        
         data_num = config["data_num"]
+        if (data_num == -1) {
+            data_num = np.shape(i_data)[0]
+        }
         w = config["weight"]
         data = DataProcessing(i_data, o_data, data_num, file_path)
         self.compile_model(w)

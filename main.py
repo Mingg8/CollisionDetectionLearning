@@ -66,6 +66,18 @@ def training(
     i_data = np.transpose(i_data)
     o_data = np.transpose(o_data)
 
+    new_i_data = []
+    new_o_data = []
+    for i in range(np.shape(i_data)[0]):
+        if abs(o_data[i][0]) < 0.0001 :
+            new_i_data.append(i_data[i])
+            new_o_data.append(o_data[i])
+    i_data = np.array(new_i_data)
+    o_data = np.array(new_o_data)
+    del new_i_data, new_o_data
+
+    if data_num == -1:
+        data_num = np.shape(i_data)[0]
     data = DataProcessing(i_data, o_data, data_num, save_directory)
 
     print("i: {}, o: {}".format(np.shape(data.train_input), \
@@ -82,7 +94,7 @@ def training(
     t.saveFile(
         model_file,
         weight_file
-        )
+    )
     del t
 
     # iteration with different data sets
@@ -115,38 +127,38 @@ if __name__ == "__main__":
     
     file_path = str(os.getcwd())
 
-    # now = datetime.now()
-    # now_string = now.strftime("%Y-%m-%d_%H:%M")
-    # save_directory = file_path + '/old_results/' + now_string
-    # try:
-    #     os.makedirs(save_directory)
-    # except:
-    #     print("already exists")
+    now = datetime.now()
+    now_string = now.strftime("%Y-%m-%d_%H:%M")
+    save_directory = file_path + '/old_results/' + now_string
+    try:
+        os.makedirs(save_directory)
+    except:
+        print("already exists")
 
     ############ TRAINING
     data_num = config["data_num"]
     file_name = config["file_name"]
     error_bound = config["error_bound"]
-    # training(
-    #     error_bound,
-    #     file_path,
-    #     save_directory,
-    #     file_name,
-    #     data_num,
-    #     gradient_learning
-    #     )
+    training(
+        error_bound,
+        file_path,
+        save_directory,
+        file_name,
+        data_num,
+        gradient_learning
+        )
 
-    save_dir = file_path + '/old_results/2020-01-29_20:02_hdim_64'
-    model_file_name = '/model_2020-02-18_17:52.json'
-    weight_file_name = '/weight_2020-02-18_17:52.h5'
+    # save_dir = file_path + '/old_results/2020-01-29_20:02_hdim_64'
+    # model_file_name = '/model_2020-02-18_17:52.json'
+    # weight_file_name = '/weight_2020-02-18_17:52.h5'
 
-    # loadModelAndSaveCsv(save_dir, model_file_name, weight_file_name, gradient_learning)
+    # # loadModelAndSaveCsv(save_dir, model_file_name, weight_file_name, gradient_learning)
 
-    training(error_bound,
-      file_path,
-      file_path + '/old_results/2020-02-18_17:46',
-      file_name,
-      data_num,
-      gradient_learning,
-      model_file_name,
-      weight_file_name)
+    # training(error_bound,
+    #   file_path,
+    #   file_path + '/old_results/2020-02-18_17:46',
+    #   file_name,
+    #   data_num,
+    #   gradient_learning,
+    #   model_file_name,
+    #   weight_file_name)
