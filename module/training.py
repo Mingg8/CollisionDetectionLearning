@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from module.normalize import Normalize
 from module.data_processing import DataProcessing
 from datetime import datetime
-from config import config
+from config.config import config
 from module.file_io import FileIO
 
 class Train:
@@ -82,7 +82,7 @@ class Train:
         if self.grad_learning:
             def grad_loss(y_true, y_pred):
                 grad_normal_loss = w[1] * K.mean(tf.math.acos(K.sum(
-                    tf.math.l2_normalize(self.grad) * y_true[:,1:4], axis = 0)))
+                    tf.math.l2_normalize(self.grad) * y_true[:,1:], axis = 0)))
                 return grad_normal_loss
             
             def tot_loss(y_true, y_pred):
@@ -141,17 +141,41 @@ class Train:
         sorted_output = np.array([real_output[i][0] for i in sorted_ind])
 
         error = abs(sorted_prediction - sorted_output)
+
+        data_p = []
+        data_o = []
+        data_e  = []
+        num = 0
+        for i in range(len(real_output)):
+            if error[i] <= 1e-5:
+                data_p.append(sorted_prediction[i])
+                data_o.append(sorted_output[i])
+                data_e.append(error[i])
+                num = num + 1
+        rate = num / len(real_output)
+        data_p = np.array(data_p)
+        data_o = np.array(data_o)
+        data_e = np.array(data_e)
         
         print("max error: %.10f" %(np.max(error)))
+        print("error less than 1e-5: %.10f" %(rate))
+        print("mean error: %.10f" %(np.mean(error)))
+        print("mean error less than 1e-5: %.10f" %(np.mean(data_e)))
+
 
         now = datetime.now()
         now_string = now.strftime("%Y-%m-%d_%H:%M")
 
         x = range(len(sorted_output))
-        plt.plot(x, sorted_prediction, 'b', sorted_output, 'r')
+        plt.plot(x, sorted_prediction, 'b', sorted_output, 'r', '.')
         plt.savefig(self.save_dir +'/figure_'+now_string+'.png')
         plt.clf()
         # plt.show()
+
+        x = range(num)
+        plt.plot(x, data_p, 'b', data_o, 'r')
+        plt.savefig(self.save_dir + '/figure2_'+now_string+'.png', '.')
+        plt.clf()
 
         self.saveWeightAsCsv()
     
@@ -176,9 +200,8 @@ class Train:
             )
         
         data_num = config["data_num"]
-        if (data_num == -1) {
+        if (data_num == -1) :
             data_num = np.shape(i_data)[0]
-        }
         w = config["weight"]
         data = DataProcessing(i_data, o_data, data_num, file_path)
         self.compile_model(w)

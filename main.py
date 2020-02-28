@@ -1,4 +1,5 @@
 import os
+import shutil
 from math import sqrt, floor
 from datetime import datetime
 import numpy as np
@@ -11,7 +12,7 @@ from module.normalize import Normalize
 from module.training import Train
 from module.file_io import FileIO
 from module.data_processing import DataProcessing
-from config import config
+from config.config import config
 
 def loadModelAndTest(m_file, w_file, gradient_learning):
     t = Train(
@@ -63,8 +64,8 @@ def training(
         config['input_file_name'],
         config['output_file_name'])
 
-    i_data = np.transpose(i_data)
-    o_data = np.transpose(o_data)
+    # i_data = np.transpose(i_data)
+    # o_data = np.transpose(o_data)
 
     new_i_data = []
     new_o_data = []
@@ -123,7 +124,7 @@ def training(
         del t
 
 if __name__ == "__main__":
-    gradient_learning = False
+    gradient_learning = config["gradient_learning"]
     
     file_path = str(os.getcwd())
 
@@ -134,6 +135,7 @@ if __name__ == "__main__":
         os.makedirs(save_directory)
     except:
         print("already exists")
+    shutil.copy2(file_path + '/config/config.py', save_directory)
 
     ############ TRAINING
     data_num = config["data_num"]

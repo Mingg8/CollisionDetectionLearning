@@ -1,5 +1,5 @@
 import numpy as np
-from config import config
+from config.config import config
 
 class Normalize():
     def __init__(self, i_data, o_data, save_dir):

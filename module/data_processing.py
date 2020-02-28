@@ -1,6 +1,6 @@
 import numpy as np
 from module.normalize import Normalize
-from config import config
+from config.config import config
 
 class DataProcessing:
     def __init__(self, i_data, o_data, data_num, save_dir):
