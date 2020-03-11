@@ -167,14 +167,14 @@ class Train:
         now_string = now.strftime("%Y-%m-%d_%H:%M")
 
         x = range(len(sorted_output))
-        plt.plot(x, sorted_prediction, 'b', sorted_output, 'r', '.')
+        plt.plot(x, sorted_prediction, 'b.', sorted_output, 'r.')
         plt.savefig(self.save_dir +'/figure_'+now_string+'.png')
         plt.clf()
         # plt.show()
 
         x = range(num)
-        plt.plot(x, data_p, 'b', data_o, 'r')
-        plt.savefig(self.save_dir + '/figure2_'+now_string+'.png', '.')
+        plt.plot(x, data_p, 'b.', data_o, 'r.')
+        plt.savefig(self.save_dir + '/figure2_'+now_string+'.png')
         plt.clf()
 
         self.saveWeightAsCsv()
